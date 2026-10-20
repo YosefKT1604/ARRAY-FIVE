@@ -1,0 +1,20 @@
+[project]
+name = "orbyte-backend"
+version = "0.1.0"
+description = "Backend API for the AI-based disruption-recovery system."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi[standard]>=0.153.0",
+    "pydantic-settings>=2.16.1",
+    "sqlalchemy>=2.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
