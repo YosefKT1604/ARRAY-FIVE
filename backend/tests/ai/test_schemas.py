@@ -14,6 +14,9 @@ from scdc.ai.schemas import (
     DraftIncident,
     ExtractionResult,
     Money,
+    NormalizedIncident,
+    PlanComparison,
+    RawExplanation,
     UnresolvedField,
     UnresolvedReason,
 )
@@ -85,3 +88,41 @@ def test_extraction_result_requires_provenance():
     result = ExtractionResult(draft_incident=DraftIncident(), needs_clarification=True,
                               generated_by="template", fallback_used=True)
     assert result.model_dump(mode="json")["draft_incident"]["source"] == "message"
+
+
+# --- Module B inputs and outputs (v2 step 3a) --------------------------------------------
+
+
+def test_demo_incident_impact_and_plans_load(incident, impact, plans):
+    """The demo fixtures from Persons 2, 3 and 4 fit our local copies of their shapes."""
+    assert incident.type.value == "supplier_delay" and incident.quantity_affected == 20
+    assert [e.entity_id for e in impact.affected_entities] == ["R-01", "J-01", "J-02", "CM-01", "CM-02"]
+    assert impact.resource_shortfalls[0].shortfall == 20
+    assert [p.validation.status.value for p in plans] == ["feasible", "infeasible", "needs_confirmation"]
+    assert plans[0].estimated_cost.amount == Decimal("80.00") and plans[2].estimated_cost is None
+
+
+def test_normalized_incident_requires_type_description_and_time():
+    """A confirmed incident must have a type, a description and a report time (unlike a draft)."""
+    with pytest.raises(ValidationError):
+        NormalizedIncident.model_validate({"source": "form", "description": "late chairs"})
+
+
+def test_plan_comparison_status_must_be_a_real_status():
+    """validation_status only accepts P4's three values."""
+    with pytest.raises(ValidationError):
+        PlanComparison(plan_id="RP-002", validation_status="recommended")
+
+
+def test_raw_explanation_is_strict():
+    """The model's reply cannot carry a status, unknown keys or empty texts."""
+    good = {"summary": "Chairs are late.",
+            "plan_comparisons": [{"plan_id": "RP-001", "benefits": [{"source": "cost", "text": "Costs RM 80.00."}]}]}
+    assert RawExplanation.model_validate(good).plan_comparisons[0].benefits[0].source == "cost"
+    with pytest.raises(ValidationError):
+        RawExplanation.model_validate({**good, "missing_confirmations": ["x"]})
+    with pytest.raises(ValidationError):
+        RawExplanation.model_validate({"summary": "x", "plan_comparisons": [
+            {"plan_id": "RP-002", "validation_status": "feasible"}]})
+    with pytest.raises(ValidationError):
+        RawExplanation.model_validate({"summary": ""})
