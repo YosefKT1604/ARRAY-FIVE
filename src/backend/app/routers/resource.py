@@ -7,5 +7,5 @@ from app.services.resource import list_resources
 router = APIRouter(prefix="/resources", tags=["resources"])
 
 @router.get("", response_model=ResourceList)
-def get_resources(db: DbSession):
-    return {"items": list_resources(db)}
+def get_resources(db: DbSession) -> ResourceList:
+    return ResourceList(items=list_resources(db))
