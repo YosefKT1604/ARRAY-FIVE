@@ -8,6 +8,15 @@ class DisruptionType(StrEnum):
     RESOURCE_UNAVAILABLE = "resource_unavailable"
     STAFF_ABSENCE = "staff_absence"
 
+class DisruptionStatus(StrEnum):
+    RECEIVED = "received"
+    NEEDS_CLARIFICATION = "needs_clarification"
+    VALIDATED = "validated"
+    ANALYZED = "analyzed"
+    PLANS_READY = "plans_ready"
+    DECIDED = "decided"
+    CLOSED = "closed"
+
 class InputSource(StrEnum):
     FORM = "form"
     MESSAGE = "message"
