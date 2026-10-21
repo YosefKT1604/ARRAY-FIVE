@@ -45,3 +45,18 @@ def test_generate_plans_twice_returns_409(client):
 
     response = client.post("/api/v1/disruptions/D-001/recovery-plans")
     assert response.status_code == 409
+
+def test_get_one_plan(client):
+    report_and_analyze(client)
+    client.post("/api/v1/disruptions/D-001/recovery-plans")
+
+    response = client.get("/api/v1/recovery-plans/RP-001")
+    assert response.status_code == 200
+
+    plan = response.json()
+    assert plan["rank"] == 1
+    assert plan["estimated_cost"] == {"amount": "80.00", "currency": "MYR"}
+
+def test_get_unknown_plan_returns_404(client):
+    response = client.get("/api/v1/recovery-plans/RP-999")
+    assert response.status_code == 404
