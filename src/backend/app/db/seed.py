@@ -1,25 +1,52 @@
 import json
-from datetime import datetime, UTC
+from datetime import datetime, date, UTC
 from pathlib import Path
+from typing import Any
+
+from sqlalchemy.orm import Session
+
 from app.db.database import engine, Base, SessionLocal
+from app.models.dependency import Dependency
+from app.models.job import Job
 from app.models.resource import Resource
 
 
 SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.json"
 
+# Fixture key -> model, parents before children so foreign keys resolve.
+TABLES = [
+    ("resources", Resource),
+    ("jobs", Job),
+    ("dependencies", Dependency),
+]
+DATE_FIELDS = {"expected_date", "event_date", "deadline", "required_by"}
+TIMESTAMP_FIELDS = {"verified_at", "confirmed_at"}
+
 def parse_timestamp(value: str | None) -> datetime | None:
     return datetime.fromisoformat(value).astimezone(UTC) if value else None
 
-def seed() -> None:
+def parse_row(row: dict[str, Any]) -> dict[str, Any]:
+    parsed = dict(row)
+    for field, value in row.items():
+        if value is None:
+            continue
+        if field in DATE_FIELDS:
+            parsed[field] = date.fromisoformat(value)
+        elif field in TIMESTAMP_FIELDS:
+            parsed[field] = parse_timestamp(value)
+    return parsed
+
+def load_fixture(session: Session) -> None:
     data = json.loads(SEED_FILE.read_text(encoding="utf-8"))
+    for key, model in TABLES:
+        session.add_all(model(**parse_row(row)) for row in data[key])
+    session.commit()
+
+def seed() -> None:
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     with SessionLocal() as session:
-        session.add_all(
-            Resource(**{**row, "verified_at": parse_timestamp(row["verified_at"])})
-            for row in data["resources"]
-        )
-        session.commit()
+        load_fixture(session)
 
 if __name__ == "__main__":
     seed()
