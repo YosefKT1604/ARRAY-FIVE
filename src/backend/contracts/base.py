@@ -1,6 +1,9 @@
 from decimal import Decimal
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated
 
+from pydantic import BaseModel, ConfigDict, Field
+
+Quantity = Annotated[int, Field(ge=0)]
 
 class ContractModel(BaseModel):
     """Base for every shared shape: unknown fields are rejected, ORM rows are accepted."""
