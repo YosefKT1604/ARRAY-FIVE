@@ -6,9 +6,11 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.db.database import engine, Base, SessionLocal
+from app.models.delivery import Delivery
 from app.models.dependency import Dependency
 from app.models.job import Job
 from app.models.resource import Resource
+from app.models.supplier import Supplier, SupplierOffering
 
 
 SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.json"
@@ -16,6 +18,9 @@ SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.js
 # Fixture key -> model, parents before children so foreign keys resolve.
 TABLES = [
     ("resources", Resource),
+    ("suppliers", Supplier),
+    ("supplier_offerings", SupplierOffering),
+    ("deliveries", Delivery),
     ("jobs", Job),
     ("dependencies", Dependency),
 ]
