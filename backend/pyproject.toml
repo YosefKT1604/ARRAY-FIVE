@@ -1,0 +1,24 @@
+[project]
+name = "scdc"
+version = "0.2.0"
+description = "SCDC disruption-recovery backend and algorithm modules"
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.6"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+# Live AI providers. Optional: the app, fallbacks and tests never need it.
+# Pinned EXACTLY: litellm 1.82.7 and 1.82.8 were compromised on PyPI (March 2026).
+# Only upgrade deliberately, to a release that has been public for at least two weeks.
+llm = ["litellm==1.100.5"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["scdc*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
