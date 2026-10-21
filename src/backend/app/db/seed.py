@@ -2,6 +2,7 @@ import json
 from datetime import datetime, date, UTC
 from pathlib import Path
 from typing import Any
+from app.models.approval import Approval
 from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
 from sqlalchemy.orm import Session
