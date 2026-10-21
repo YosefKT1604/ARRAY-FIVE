@@ -252,6 +252,31 @@ class DraftIncident(OutputModel):
     unresolved_fields: list[UnresolvedField] = Field(default_factory=list)
 
 
+class RawFlag(OutputModel):
+    """A field the extractor (model or rules) is itself unsure about."""
+
+    field: IncidentField
+    reason: Literal["ambiguous", "conflicting", "missing"]
+    note: str = ""
+    candidates: list[str] = Field(default_factory=list)  # suggestions, e.g. ["20", "30"]
+
+
+class RawExtraction(OutputModel):
+    """What the extraction model must return, and what the rule-based extractor produces.
+
+    Names are as written in the message ("Maju", "chairs"); code maps them to IDs.
+    Dates and quantity are final values. Nothing here is trusted until step 2d checks it.
+    """
+
+    disruption_type: DisruptionType | None = None
+    supplier_name: str | None = None
+    resource_name: str | None = None
+    quantity_affected: int | None = Field(default=None, ge=1)
+    original_arrival_date: date | None = None
+    new_arrival_date: date | None = None
+    flags: list[RawFlag] = Field(default_factory=list)
+
+
 class ExtractionResult(OutputModel):
     """What Module A returns: a form prefill, plus everything a human still has to confirm."""
 
