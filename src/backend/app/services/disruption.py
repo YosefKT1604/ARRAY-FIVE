@@ -5,7 +5,8 @@ from sqlalchemy import select, func
 
 from app.models.disruption import Disruption
 from app.schemas.disruption import DisruptionCreate
-from contracts import NormalizedIncident, DisruptionStatus
+from app.services.impact import analyze_impact
+from contracts import NormalizedIncident, DisruptionStatus, ImpactResult
 
 
 def next_disruption_id(db: Session) -> str:
@@ -42,4 +43,11 @@ def list_disruptions(db: Session) -> list[Disruption]:
 
 def get_disruption(db: Session, disruption_id: str) -> Disruption | None:
     return db.get(Disruption, disruption_id)
+
+def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
+    impact = analyze_impact(NormalizedIncident.model_validate(disruption.incident))
+    disruption.impact = impact.model_dump(mode="json")
+    disruption.status = DisruptionStatus.ANALYZED
+    db.commit()
+    return impact
 

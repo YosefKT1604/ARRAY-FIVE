@@ -19,3 +19,4 @@ class Disruption(Base):
     status: Mapped[str]
     incident: Mapped[dict[str, Any]] = mapped_column(JSON)
     severity: Mapped[int | None]
+    impact: Mapped[dict[str, Any] | None] = mapped_column(JSON)
