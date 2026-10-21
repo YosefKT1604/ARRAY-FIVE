@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import ConfigDict, BaseModel
 
-from app.schemas.money import Money
+from contracts.base import Money
 
 
 class SupplierOfferingOut(BaseModel):
