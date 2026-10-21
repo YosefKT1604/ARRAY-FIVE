@@ -105,3 +105,13 @@ class ActionStatus(StrEnum):
     APPROVED = "approved"
     COMPLETED = "completed"
     FAILED = "failed"
+
+class Role(StrEnum):
+    OWNER = "owner"
+    STAFF = "staff"
+    VIEWER = "viewer"
+
+class Decision(StrEnum):
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    MORE_INFO_REQUESTED = "more_info_requested"

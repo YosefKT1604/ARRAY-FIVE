@@ -5,7 +5,7 @@ from contracts.entities import (
 )
 from contracts.enums import (
     ActionStatus, ActionType, CheckCode, CheckResult, DeliveryStatus, DependencyType, DisruptionType, EntityType,
-    ImpactStatus, InputSource, PlanCreator, PlanStatus, Priority, UnresolvedReason, ValidationStatus, DisruptionStatus
+    ImpactStatus, InputSource, PlanCreator, PlanStatus, Priority, UnresolvedReason, ValidationStatus, DisruptionStatus, Role, Decision
 )
 from contracts.impact import AffectedEntity, CheckedNotAffected, Evidence, ImpactResult, ResourceShortfall
 from contracts.incident import NormalizedIncident, UnresolvedField
