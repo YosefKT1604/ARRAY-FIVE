@@ -103,6 +103,14 @@ def test_model_doubt_blocks_an_agreed_value(snapshot):
     assert item.reason.value == "ambiguous" and item.candidates == ["20"]
 
 
+def test_model_missing_flag_is_silence(snapshot):
+    """Model: 'can't work out the new date' (missing). Rules found 23 Oct: filled, as if the model were silent."""
+    model = raw(new_arrival_date=None, flags=[RawFlag(field="new_arrival_date", reason="missing")])
+    result = combine(raw(), model, snapshot, REPORTED_AT)
+    assert result.draft_incident.new_arrival_date == date(2026, 10, 23)
+    assert result.field_evidence["new_arrival_date"] == "rules (AI model gave no value)"
+
+
 def test_unknown_supplier_name_from_model_is_unmatched(snapshot):
     """Model names 'Bintang Rentals', which is not a known supplier."""
     rules = raw(supplier_name=None, flags=[RawFlag(field="supplier_id", reason="missing")])
@@ -135,6 +143,20 @@ def test_original_date_comes_from_the_delivery(snapshot):
     result = combine(raw(original_arrival_date=None), None, snapshot, REPORTED_AT)
     assert result.draft_incident.original_arrival_date == date(2026, 10, 21)
     assert result.field_evidence["original_arrival_date"] == "delivery DL-01 due date"
+
+
+def test_model_only_original_date_confirmed_by_delivery(snapshot):
+    """Only the model gave 21 Oct, which is DL-01's due date: filled from the delivery."""
+    result = combine(raw(original_arrival_date=None), raw(), snapshot, REPORTED_AT)
+    assert result.draft_incident.original_arrival_date == date(2026, 10, 21)
+    assert "matches the AI's reading" in result.field_evidence["original_arrival_date"]
+
+
+def test_model_only_original_date_not_matching_delivery_is_asked(snapshot):
+    """Only the model gave 22 Oct, but DL-01 is due 21 Oct: still blank, 22 Oct suggested."""
+    model = raw(original_arrival_date=date(2026, 10, 22))
+    item = unresolved(combine(raw(original_arrival_date=None), model, snapshot, REPORTED_AT))["original_arrival_date"]
+    assert item.reason.value == "unverified" and item.candidates == ["2026-10-22"]
 
 
 def test_original_date_that_contradicts_the_delivery(snapshot):

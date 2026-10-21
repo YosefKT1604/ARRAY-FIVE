@@ -9,13 +9,15 @@ No AI in this file: it decides what to trust. Rules agreed in v2 step 2d:
     M only, rules flagged doubt                    blank; M + the rules' suggestions, the rules' reason
     M only, rules found nothing                    blank; M suggested ("only the AI found this")
     a flag of doubt while the values agree         blank; the value suggested
+      (the model's "missing" flag means "I don't know": treated as silence, not doubt)
     neither has a value                            blank; any suggestions from the flags
     no model at all                                the rules' values, as they are
 
 Then, for filled values:
 - supplier: taken from the sender's contact when the message names none; a different named
   supplier than the sender is a conflict;
-- delivery: the single open delivery for supplier + item; its due date fills a blank original date;
+- delivery: the single open delivery for supplier + item; its due date fills a blank original date
+  (also one where only the AI gave a date, if that date is the due date);
 - checks: new date after the original, not before the report date, within 60 days of it;
   quantity no larger than the delivery. A failed check turns the value into a suggestion.
 
@@ -242,6 +244,8 @@ def merge(rules: Reading, model: Reading | None) -> Merged:
         return Merged(r, "rules") if r is not None else Merged(doubt=dr)
 
     m, dm = model.value, model.doubt
+    if dm is not None and dm.reason == UnresolvedReason.MISSING:  # "I don't know" is silence, not doubt
+        dm = None
     flag_candidates = _union(dr.candidates if dr else [], dm.candidates if dm else [])
 
     if r is not None and m is not None and m != r:
@@ -336,8 +340,14 @@ def apply_checks(merged: dict[str, Merged], delivery: Delivery | None, reported_
     original, new, quantity = merged["original_arrival_date"], merged["new_arrival_date"], merged["quantity_affected"]
 
     if delivery is not None:
+        due = delivery.expected_date.isoformat()
+        model_agrees = (original.doubt is not None and original.doubt.reason == UnresolvedReason.UNVERIFIED
+                        and original.doubt.candidates == [due])
         if original.value is None and (original.doubt is None or original.doubt.reason == UnresolvedReason.MISSING):
             original.value, original.source, original.doubt = delivery.expected_date, f"delivery {delivery.id} due date", None
+        elif original.value is None and model_agrees:
+            original.value, original.source, original.doubt = (
+                delivery.expected_date, f"delivery {delivery.id} due date (matches the AI's reading)", None)
         elif original.value is not None and original.value != delivery.expected_date:
             _reject(original, UnresolvedReason.CONFLICTING,
                     f"delivery {delivery.id} is due {delivery.expected_date.isoformat()}", [delivery.expected_date.isoformat()])
