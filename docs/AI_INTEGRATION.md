@@ -14,18 +14,19 @@ backed by the data, and every module works with no model at all.
 cd backend
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"        # no AI library needed
-.\.venv\Scripts\python.exe -m pytest -q                       # 327 tests, no network, no API key
+.\.venv\Scripts\python.exe -m pytest -q                       # 355 tests, no network, no API key
 ```
 
 ```python
 from scdc.ai.config import get_adapter
-from scdc.ai.extraction import extract_incident
+from scdc.ai.extraction import extract_from_message, extract_incident
 from scdc.ai.explanation import explain
 from scdc.ai.drafts import draft_messages, DraftNotAllowedError
 
 adapter = get_adapter()            # once at start-up; reads SCDC_AI_* settings (section 6)
 
-result = extract_incident(message_text, snapshot, reported_at, sender=from_contact, adapter=adapter)
+result = extract_from_message(incoming, snapshot, adapter=adapter)      # a WhatsApp message (IncomingMessage)
+result = extract_incident(message_text, snapshot, reported_at, adapter=adapter)   # just a text
 explanation = explain(incident, impact, plans, snapshot=snapshot, adapter=adapter)
 drafts = draft_messages(approved_plan, incident, snapshot, adapter=adapter)
 ```
@@ -49,14 +50,33 @@ message ──► extract_incident ──► owner confirms form ──► valid
 
 ## 3. The functions
 
-### `extract_incident(message, snapshot, reported_at, *, sender=None, adapter=None) -> ExtractionResult`
+### `extract_from_message(incoming, snapshot, *, adapter=None) -> ExtractionResult`
+
+For a message as it arrives on WhatsApp. `IncomingMessage` carries everything the channel gives:
+
+| Field | Meaning |
+|---|---|
+| `text` | the message |
+| `received_at` | when it arrived (becomes the report time) |
+| `from_number` | the sender's phone, any format: `+60 12-345 6789`, `012-345 6789` and `60123456789` are the same number (Malaysia by default) |
+| `contact_name` | the name **the business owner saved** for that number in their WhatsApp contacts, e.g. `"Ali Maju Rental"` (not the sender's own profile name) |
+| `from_contact` | optional contact reference, e.g. `"whatsapp:maju-rental (synthetic)"` (the demo's `supplier_message` fits as is) |
+
+The phone number is matched to a supplier's `phone` (**new optional field**, see section 9) and the saved
+name to supplier names and aliases (exact, alias or whole word; a close spelling is only a suggestion). If
+they point to one supplier, it fills or confirms the supplier; if they point to different suppliers, or the
+message names a different supplier, the supplier is left blank as `conflicting` with both suggested. Contact
+details are **never sent to the model**. It then works exactly like `extract_incident` below.
+
+### `extract_incident(message, snapshot, reported_at, *, sender=None, from_number=None, contact_name=None, adapter=None) -> ExtractionResult`
 
 | Argument | Meaning |
 |---|---|
 | `message: str` | the supplier's message, English |
 | `snapshot: BusinessSnapshot` | the business records (suppliers, resources, deliveries...) used to resolve names to IDs |
 | `reported_at: datetime` | when the message arrived (with time zone); "tomorrow", "Friday" are resolved from it |
-| `sender: str \| None` | **new, optional**: the sender's contact (e.g. `"whatsapp:maju-rental (synthetic)"`). If it equals a supplier's `contact_reference`, it identifies or confirms the supplier |
+| `sender: str \| None` | **new, optional**: the sender's contact reference (e.g. `"whatsapp:maju-rental (synthetic)"`). If it equals a supplier's `contact_reference`, it identifies or confirms the supplier |
+| `from_number`, `contact_name` | **new, optional**: the sender's phone and the owner's saved name for it (as in `IncomingMessage`) |
 | `adapter` | from `get_adapter()`; `None` = no model (rules only) |
 
 How it works: a rule-based reader and the model both read the message; code combines the two readings field
@@ -255,8 +275,8 @@ From `backend/`:
 
 | Command | What it checks |
 |---|---|
-| `.\.venv\Scripts\python.exe -m pytest -q` | 327 unit and evaluation tests; no network, no key |
-| `.\.venv\Scripts\python.exe -m scdc.ai.eval.extraction` | 20 message cases, rules-only and with a scripted model: field accuracy, **wrong values filled (must be 0)** |
+| `.\.venv\Scripts\python.exe -m pytest -q` | 355 unit and evaluation tests; no network, no key |
+| `.\.venv\Scripts\python.exe -m scdc.ai.eval.extraction` | 24 message cases (incl. WhatsApp contact details), rules-only and with a scripted model: field accuracy, **wrong values filled (must be 0)** |
 | `.\.venv\Scripts\python.exe -m scdc.ai.eval.explanation` | 20 scripted model replies with planted false claims: **leaks (must be 0)**, false alarms |
 | `.\.venv\Scripts\python.exe -m scdc.ai.eval.drafts` | 18 scripted polishes: **leaks (must be 0)**, placeholders, approval |
 
@@ -275,8 +295,10 @@ are swapped for imports from P2's `contracts` package. Known differences:
 | Money in JSON | 2-decimal string, `"80.00"`, rounding half up | `Decimal`, format not fixed (§10.4) | agree on `"80.00"` |
 | Layout | `backend/scdc/ai/`, imports `scdc.ai...` | `src/backend/`, imports `contracts...`, Python ≥ 3.13, uv | move `scdc/ai` under P2's layout; change imports only |
 
-New optional arguments that need P2's agreement:
-- `extract_incident(..., sender=...)`: pass the message's `from_contact`.
+New optional inputs that need P2's agreement:
+- **`Supplier.phone`** (optional): the supplier's WhatsApp number, so a message can be matched by number.
+- `extract_from_message(IncomingMessage(...))`: pass the WhatsApp number and the owner's saved contact name
+  (or `extract_incident(..., sender=..., from_number=..., contact_name=...)`).
 - `explain(..., snapshot=...)`: pass the snapshot so explanations use names.
 - **Alias learning (later):** when the owner resolves an `unmatched` supplier or item (e.g. "Mr Tan" → Bintang
   Rentals), the app could ask "Remember 'Mr Tan' as Bintang Rentals?" and save it to that record's `aliases`.

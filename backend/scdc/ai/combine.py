@@ -14,8 +14,9 @@ No AI in this file: it decides what to trust. Rules agreed in v2 step 2d:
     no model at all                                the rules' values, as they are
 
 Then, for filled values:
-- supplier: taken from the sender's contact when the message names none; a different named
-  supplier than the sender is a conflict;
+- supplier: taken from the sender's contact details (contact reference, phone number, the owner's saved
+  contact name; see contacts.py) when the message names none; a different named supplier than the sender,
+  or contact details pointing to different suppliers, is a conflict;
 - delivery: the single open delivery for supplier + item; its due date fills a blank original date
   (also one where only the AI gave a date, if that date is the due date);
 - checks: new date after the original, not before the report date, within 60 days of it;
@@ -30,6 +31,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from .contacts import SenderMatch, identify_sender
 from .names import resolve_name
 from .schemas import (
     MATERIAL_FIELDS,
@@ -105,12 +107,16 @@ def combine(
     reported_at: datetime,
     *,
     sender: str | None = None,
+    from_number: str | None = None,
+    contact_name: str | None = None,
     generated_by: str = "template",
     warnings: list[str] | None = None,
 ) -> ExtractionResult:
     """Merge the two readings field by field, apply the checks, and build the ExtractionResult.
 
     `model` is None when no model was used (unavailable, timed out or invalid reply).
+    `sender` (contact reference), `from_number` and `contact_name` (the owner's saved name for the number)
+    are the sender's contact details; see contacts.py.
     """
     reported_on = reported_at.date()
     suppliers = {s.id: [s.name, *s.aliases] for s in snapshot.suppliers}
@@ -134,7 +140,9 @@ def combine(
             if item.value is not None:
                 item.source = "rules (no model used)"
 
-    apply_sender(merged["supplier_id"], _supplier_from_sender(sender, snapshot), sender, snapshot)
+    apply_sender(merged["supplier_id"],
+                 identify_sender(snapshot, contact_reference=sender, phone=from_number, contact_name=contact_name),
+                 snapshot)
     delivery = find_delivery(merged, snapshot)
     apply_checks(merged, delivery, reported_on)
 
@@ -270,26 +278,31 @@ def merge(rules: Reading, model: Reading | None) -> Merged:
 # --- Sender, delivery and checks -----------------------------------------------------------
 
 
-def _supplier_from_sender(sender: str | None, snapshot: BusinessSnapshot) -> str | None:
-    """The supplier whose contact_reference is exactly the sender (ignoring case), or None."""
-    if not sender:
-        return None
-    hits = [s.id for s in snapshot.suppliers
-            if s.contact_reference and s.contact_reference.strip().lower() == sender.strip().lower()]
-    return hits[0] if len(hits) == 1 else None
-
-
 def _supplier_name(supplier_id: str, snapshot: BusinessSnapshot) -> str:
     """The supplier's name for notes shown to the owner (the ID if it is not found)."""
     return next((s.name for s in snapshot.suppliers if s.id == supplier_id), supplier_id)
 
 
-def apply_sender(supplier: Merged, sender_id: str | None, sender: str | None, snapshot: BusinessSnapshot) -> None:
-    """Use the sender's contact to fill, confirm or contradict the supplier."""
-    if sender_id is None:
+def apply_sender(supplier: Merged, match: SenderMatch | None, snapshot: BusinessSnapshot) -> None:
+    """Use the sender's contact details (contacts.py) to fill, confirm or contradict the supplier."""
+    if match is None:
         return
+    if match.conflict:  # the phone, saved name or contact reference point to different suppliers
+        names = ", ".join(_supplier_name(i, snapshot) for i in match.conflict)
+        supplier.doubt = Doubt(UnresolvedReason.CONFLICTING,
+                               f"the sender's contact details point to different suppliers ({names})",
+                               _union([supplier.value] if supplier.value else [], match.conflict))
+        supplier.value, supplier.source = None, ""
+        return
+    if match.supplier_id is None:  # only close-spelling suggestions from the saved name
+        if supplier.value is None:
+            supplier.doubt = supplier.doubt or Doubt(UnresolvedReason.MISSING, "the supplier could not be determined")
+            supplier.doubt.candidates = _union(supplier.doubt.candidates, match.suggestions)
+        return
+
+    sender_id = match.supplier_id
     if supplier.value == sender_id:
-        supplier.source += f"; confirmed by sender contact {sender}"
+        supplier.source += f"; confirmed by {match.label}"
     elif supplier.value is not None:
         named, sent_by = _supplier_name(supplier.value, snapshot), _supplier_name(sender_id, snapshot)
         supplier.doubt = Doubt(UnresolvedReason.CONFLICTING,
@@ -297,10 +310,10 @@ def apply_sender(supplier: Merged, sender_id: str | None, sender: str | None, sn
                                [supplier.value, sender_id])
         supplier.value = None
     elif supplier.doubt is None or supplier.doubt.reason == UnresolvedReason.MISSING:
-        supplier.value, supplier.source, supplier.doubt = sender_id, f"sender contact {sender}", None
+        supplier.value, supplier.source, supplier.doubt = sender_id, match.label, None
     elif supplier.doubt.reason in (UnresolvedReason.AMBIGUOUS, UnresolvedReason.UNVERIFIED) \
             and supplier.doubt.candidates == [sender_id]:
-        supplier.value, supplier.source, supplier.doubt = sender_id, f"sender contact {sender} (matches the AI's reading)", None
+        supplier.value, supplier.source, supplier.doubt = sender_id, f"{match.label} (matches the AI's reading)", None
     elif sender_id not in supplier.doubt.candidates:
         supplier.doubt.candidates.append(sender_id)
 

@@ -175,6 +175,7 @@ class Supplier(InputModel):
     name: str
     aliases: list[str] = Field(default_factory=list)
     contact_reference: str | None = None
+    phone: str | None = None  # not in CONTRACTS yet (ask P2); any format, compared after normalising
     reliability_notes: str = ""
 
 
@@ -278,6 +279,21 @@ IncidentField = Literal[
 
 # An incident cannot be analyzed until all of these are resolved (CONTRACTS.md §6.1).
 MATERIAL_FIELDS: tuple[str, ...] = ("supplier_id", "resource_id", "quantity_affected", "new_arrival_date")
+
+
+class IncomingMessage(InputModel):
+    """A message as it arrives (e.g. on WhatsApp), with what the channel tells us about the sender.
+
+    `contact_name` is the name the business owner saved for the sender's number in their own contacts
+    (e.g. "Ali Maju Rental"), not the sender's self-chosen profile name.
+    """
+
+    text: str
+    received_at: datetime                 # becomes the report time
+    from_number: str | None = None        # the sender's phone, any format ("+60 12-345 6789", "012-3456789")
+    contact_name: str | None = None       # the owner's saved name for that number
+    from_contact: str | None = None       # a contact reference, e.g. "whatsapp:maju-rental (synthetic)"
+    channel: str = "whatsapp"
 
 
 class UnresolvedField(OutputModel):

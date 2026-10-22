@@ -1,6 +1,7 @@
 {
-  "_note": "Module A evaluation set (v2 step 2e). Business data: fixtures/demo/seed.json (one open delivery: DL-01, 40 chairs from Maju, due 2026-10-21). Each case runs on the rules-only path and on the rules + mock model path. `expected` is what a careful human would fill in from the message, the sender and the business records; null = cannot be known, so the system must leave the field blank. `expected_blank` gives the expected reason for some blank fields (reported, not required). The model's scripted reply is `model_reply` (a JSON reading), `model_reply_text` (raw text sent as-is) or `model_error` (timeout | unavailable). `expected_fallback` = the model path must fall back to the rules.",
-  "defaults": {"reported_at": "2026-10-20T10:15:00+08:00"},
+  "_note": "Module A evaluation set (v2 step 2e). Business data: fixtures/demo/seed.json (one open delivery: DL-01, 40 chairs from Maju, due 2026-10-21). Each case runs on the rules-only path and on the rules + mock model path. `expected` is what a careful human would fill in from the message, the sender and the business records; null = cannot be known, so the system must leave the field blank. `expected_blank` gives the expected reason for some blank fields (reported, not required). The model's scripted reply is `model_reply` (a JSON reading), `model_reply_text` (raw text sent as-is) or `model_error` (timeout | unavailable). `expected_fallback` = the model path must fall back to the rules. `from_number` / `contact_name` (the owner's saved name for the number) are WhatsApp contact details; `defaults.supplier_phones` adds phone numbers to a copy of the demo suppliers.",
+  "defaults": {"reported_at": "2026-10-20T10:15:00+08:00",
+               "supplier_phones": {"S-01": "+60 12-345 6789", "S-02": "013-222 3344", "S-03": "+603-8888 1234"}},
   "cases": [
     {
       "id": "E01", "category": "clear",
@@ -152,6 +153,35 @@
       "model_error": "timeout",
       "expected_fallback": true,
       "expected": {"type": "supplier_delay", "supplier_id": "S-01", "resource_id": "R-01", "delivery_id": "DL-01", "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23"}
+    },
+    {
+      "id": "E21", "category": "whatsapp_contact",
+      "message": "Boss, sorry ya. Our chair delivery for tomorrow will be late. We can only send 20 chairs tomorrow, the remaining 20 chairs we deliver on Friday.",
+      "sender": null, "from_number": "012-345 6789", "contact_name": "Ali Maju Rental",
+      "model_reply": {"disruption_type": "supplier_delay", "supplier_name": null, "resource_name": "chairs", "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23", "flags": []},
+      "expected": {"type": "supplier_delay", "supplier_id": "S-01", "resource_id": "R-01", "delivery_id": "DL-01", "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23"}
+    },
+    {
+      "id": "E22", "category": "whatsapp_contact",
+      "message": "Hi boss, the 10 tables will come on Friday instead of Thursday.",
+      "sender": null, "from_number": null, "contact_name": "Pn Siti Cahaya",
+      "model_reply": {"disruption_type": "supplier_delay", "supplier_name": null, "resource_name": "tables", "quantity_affected": 10, "original_arrival_date": "2026-10-22", "new_arrival_date": "2026-10-23", "flags": []},
+      "expected": {"type": "supplier_delay", "supplier_id": "S-02", "resource_id": "R-02", "delivery_id": null, "quantity_affected": 10, "original_arrival_date": "2026-10-22", "new_arrival_date": "2026-10-23"}
+    },
+    {
+      "id": "E23", "category": "whatsapp_contact",
+      "message": "Boss, sorry ya. Our chair delivery for tomorrow will be late. We can only send 20 chairs tomorrow, the remaining 20 chairs we deliver on Friday.",
+      "sender": null, "from_number": "+60 12-345 6789", "contact_name": "Cahaya",
+      "model_reply": {"disruption_type": "supplier_delay", "supplier_name": null, "resource_name": "chairs", "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23", "flags": []},
+      "expected": {"type": "supplier_delay", "supplier_id": null, "resource_id": "R-01", "delivery_id": null, "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23"},
+      "expected_blank": {"supplier_id": "conflicting"}
+    },
+    {
+      "id": "E24", "category": "whatsapp_contact",
+      "message": "Boss, sorry ya. Our chair delivery for tomorrow will be late. We can only send 20 chairs tomorrow, the remaining 20 chairs we deliver on Friday.",
+      "sender": null, "from_number": "+60 19-999 0000", "contact_name": "Maaju Rental",
+      "model_reply": {"disruption_type": "supplier_delay", "supplier_name": null, "resource_name": "chairs", "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23", "flags": []},
+      "expected": {"type": "supplier_delay", "supplier_id": null, "resource_id": "R-01", "delivery_id": null, "quantity_affected": 20, "original_arrival_date": "2026-10-21", "new_arrival_date": "2026-10-23"}
     }
   ]
 }

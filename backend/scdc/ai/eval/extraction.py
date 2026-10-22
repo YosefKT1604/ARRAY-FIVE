@@ -84,7 +84,8 @@ def run_case(case: dict[str, Any], path: str, snapshot: BusinessSnapshot, defaul
     """Run one case on one path ("rules" or "mock") and score every expected field."""
     adapter = MockAdapter({"extract_incident": scripted_reply(case)}) if path == "mock" else None
     reported_at = datetime.fromisoformat(case.get("reported_at", defaults["reported_at"]))
-    result = extract_incident(case["message"], snapshot, reported_at, sender=case.get("sender"), adapter=adapter)
+    result = extract_incident(case["message"], snapshot, reported_at, sender=case.get("sender"),
+                              from_number=case.get("from_number"), contact_name=case.get("contact_name"), adapter=adapter)
 
     outcome = CaseOutcome(case["id"], case["category"], path)
     got = result.draft_incident.model_dump(mode="json")
@@ -113,10 +114,18 @@ def run_case(case: dict[str, Any], path: str, snapshot: BusinessSnapshot, defaul
     return outcome
 
 
+def with_phones(snapshot: BusinessSnapshot, phones: dict[str, str]) -> BusinessSnapshot:
+    """A copy of the business data with the eval's supplier phone numbers added (fixtures/demo is not changed)."""
+    copy = snapshot.model_copy(deep=True)
+    for supplier in copy.suppliers:
+        supplier.phone = phones.get(supplier.id, supplier.phone)
+    return copy
+
+
 def run_all(cases_path: Path = CASES_PATH) -> list[CaseOutcome]:
     """Run every case on every path."""
     cases, defaults = load_cases(cases_path)
-    snapshot = load_snapshot()
+    snapshot = with_phones(load_snapshot(), defaults.get("supplier_phones", {}))
     return [run_case(case, path, snapshot, defaults) for case in cases for path in PATHS]
 
 
