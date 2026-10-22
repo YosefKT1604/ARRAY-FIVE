@@ -28,4 +28,5 @@ def test_snapshot_keeps_offering_cost_as_money(session_factory):
         snapshot = build_snapshot(session, INCIDENT)
 
     offering = next(o for o in snapshot.supplier_offerings if o.supplier_id == "S-02")
+    # Money must stay an exact decimal, never a float.
     assert str(offering.unit_cost.amount) == "4.00"

@@ -10,6 +10,7 @@ VERSION_1 = {"plan_version": 1}
 
 
 def prepare_plans(client):
+    """Report the demo incident, analyze it and generate its plans, all still proposed."""
     client.post("/api/v1/disruptions", json=FORM)
     client.post("/api/v1/disruptions/D-001/analyze")
     client.post("/api/v1/disruptions/D-001/recovery-plans")
@@ -70,6 +71,7 @@ def test_plan_cannot_be_decided_twice(client):
     prepare_plans(client)
     client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
 
+    # Same plan, same version, but it's already approved, so this must be refused.
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
     assert response.status_code == 409
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
@@ -85,6 +87,7 @@ def test_owner_requests_more_info(client):
 
 def test_plan_can_be_approved_after_info_requested(client):
     prepare_plans(client)
+    # Putting a plan on hold mustn't trap it; the owner has to be able to decide once they hear back.
     client.post("/api/v1/recovery-plans/RP-001/request-info", json={"plan_version": 1, "comments": "Is the price confirmed?"}, headers=OWNER)
 
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
@@ -99,9 +102,12 @@ def test_staff_cannot_request_info(client):
 
 def test_second_plan_cannot_be_approved(client):
     prepare_plans(client)
+    # Approving RP-001 marks the whole disruption as decided.
     client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
 
+    # RP-003 is still "proposed" on its own, so only the disruption check can stop a second approval.
     response = client.post("/api/v1/recovery-plans/RP-003/approve", json=VERSION_1, headers=OWNER)
+
     assert response.status_code == 409
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
 

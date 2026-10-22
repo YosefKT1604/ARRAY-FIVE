@@ -43,8 +43,10 @@ def test_analyze_unknown_disruption_returns_404(client):
 
 def test_same_open_incident_returns_409(client):
     client.post("/api/v1/disruptions", json=FORM)
+    # Still open after analysis, so a second identical report counts as a duplicate.
     response = client.post("/api/v1/disruptions/D-001/analyze")
     assert response.status_code == 200
+
     response = client.post("/api/v1/disruptions", json=FORM)
     assert response.status_code == 409
     assert response.json()["code"] == "DUPLICATE_DISRUPTION"
@@ -61,9 +63,9 @@ def test_decided_disruption_can_be_reported_again(client):
     client.post("/api/v1/disruptions/D-001/recovery-plans")
     client.post("/api/v1/recovery-plans/RP-001/approve", json={"plan_version": 1}, headers={"X-User-Id": "U-01"})
 
+    # Once a plan is approved the disruption is closed, so the same report is a new problem.
     response = client.post("/api/v1/disruptions", json=FORM)
     assert response.status_code == 201
-
 
 def test_missing_material_field_needs_clarification(client):
     response = client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": None})
@@ -90,6 +92,7 @@ def test_decided_disruption_cannot_be_analyzed_again(client):
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
 
 def test_zero_quantity_is_rejected(client):
+    # Used to slip past the request schema and crash with a 500 when the incident was built.
     response = client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": 0})
     assert response.status_code == 422
     assert response.json()["code"] == "VALIDATION_ERROR"

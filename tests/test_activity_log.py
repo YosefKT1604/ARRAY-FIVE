@@ -30,6 +30,7 @@ def test_denied_approval_is_logged_with_actor_and_plan(seeded_client):
     run_demo_flow(seeded_client)
 
     items = seeded_client.get("/api/v1/disruptions/D-001/activity-log").json()["items"]
+    # The 403 doesn't roll the entry back: the blocked attempt is part of the audit trail.
     denied = items[3]
     assert denied["actor_id"] == "U-02"
     assert denied["plan_id"] == "RP-001"
