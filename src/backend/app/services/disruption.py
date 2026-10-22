@@ -39,6 +39,7 @@ def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
     db.commit()
     return disruption
 
+CLOSED_STATUSES = [DisruptionStatus.CLOSED, DisruptionStatus.DECIDED]
 
 def list_disruptions(db: Session) -> list[Disruption]:
     return list(db.scalars(select(Disruption).order_by(Disruption.id)))
@@ -55,3 +56,13 @@ def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
     db.commit()
     return impact
 
+def find_open_duplicate(db: Session, data: DisruptionCreate) -> Disruption | None:
+    if data.delivery_id is None or data.new_arrival_date is None:
+        return None
+    query = select(Disruption).where(Disruption.status.not_in(CLOSED_STATUSES))
+    for disruption in db.scalars(query):
+        incident = disruption.incident
+        if (incident.get("delivery_id") == data.delivery_id
+                and incident.get("new_arrival_date") == data.new_arrival_date.isoformat()):
+            return disruption
+    return None

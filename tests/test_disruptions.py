@@ -41,3 +41,25 @@ def test_analyze_unknown_disruption_returns_404(client):
     response = client.post("/api/v1/disruptions/D-999/analyze")
     assert response.status_code == 404
 
+def test_same_open_incident_returns_409(client):
+    client.post("/api/v1/disruptions", json=FORM)
+    response = client.post("/api/v1/disruptions/D-001/analyze")
+    assert response.status_code == 200
+    response = client.post("/api/v1/disruptions", json=FORM)
+    assert response.status_code == 409
+    assert response.json()["code"] == "DUPLICATE_DISRUPTION"
+    assert "D-001" in response.json()["detail"]
+
+def test_different_new_date_is_not_a_duplicate(client):
+    client.post("/api/v1/disruptions", json=FORM)
+    response = client.post("/api/v1/disruptions", json={**FORM, "new_arrival_date": "2026-10-24"})
+    assert response.status_code == 201
+
+def test_decided_disruption_can_be_reported_again(client):
+    client.post("/api/v1/disruptions", json=FORM)
+    client.post("/api/v1/disruptions/D-001/analyze")
+    client.post("/api/v1/disruptions/D-001/recovery-plans")
+    client.post("/api/v1/recovery-plans/RP-001/approve", json={"plan_version": 1}, headers={"X-User-Id": "U-01"})
+
+    response = client.post("/api/v1/disruptions", json=FORM)
+    assert response.status_code == 201

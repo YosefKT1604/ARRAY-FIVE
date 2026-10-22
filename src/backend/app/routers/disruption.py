@@ -7,7 +7,8 @@ from app.schemas.activity_log import ActivityLogList
 from app.schemas.disruption import DisruptionCreate, DisruptionCreated, DisruptionOut, DisruptionList
 from app.schemas.recovery_plan import RecoveryPlanList
 from app.services.activity_log import list_activity
-from app.services.disruption import create_disruption, list_disruptions, get_disruption, analyze_disruption
+from app.services.disruption import create_disruption, list_disruptions, get_disruption, analyze_disruption, \
+    find_open_duplicate
 from app.services.recovery_plan import create_recovery_plans, list_recovery_plans
 from app.errors import ErrorCode, ApiError
 from contracts import DisruptionStatus, ImpactResult
@@ -16,6 +17,11 @@ router = APIRouter(prefix="/disruptions", tags=["Disruptions"])
 
 @router.post("", status_code=201, response_model=DisruptionCreated)
 def report_disruption(data: DisruptionCreate, db: DbSession) -> DisruptionCreated:
+    duplicate = find_open_duplicate(db, data)
+    if duplicate is not None:
+        raise ApiError(status_code=409, code=ErrorCode.DUPLICATE_DISRUPTION,
+                       detail=f"Disruption {duplicate.id} is already open for delivery {data.delivery_id} "
+                              f"arriving {data.new_arrival_date}")
     disruption = create_disruption(db, data)
     return DisruptionCreated(disruption=disruption, incident=disruption.incident)
 
