@@ -27,6 +27,8 @@ export class ApiError extends Error {
         return 'This problem has already been reported.'
       case 'STALE_PLAN_VERSION':
         return 'This plan changed since you opened it. Reload to see the latest version.'
+      case 'PLAN_ALREADY_DECIDED':
+        return 'Someone has already decided on this plan. Reload to see what was decided.'
       case 'PLAN_INFEASIBLE':
         return "This plan won't work, so it can't be approved."
       case 'VALIDATION_ERROR':
@@ -59,6 +61,7 @@ function inferCode(status: number, detail: string): ErrorCode | undefined {
       if (d.includes('duplicate')) return 'DUPLICATE_DISRUPTION'
       if (d.includes('infeasible')) return 'PLAN_INFEASIBLE'
       if (/is at version|stale/.test(d)) return 'STALE_PLAN_VERSION'
+      if (/already (approved|rejected|decided|superseded)|is already/.test(d)) return 'PLAN_ALREADY_DECIDED'
       if (/needs clarification|analyzed/.test(d)) return 'INVALID_STATE_TRANSITION'
       return undefined
     default:

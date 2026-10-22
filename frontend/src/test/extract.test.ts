@@ -4,7 +4,7 @@ import { mockExtract } from '../mocks/extract'
 
 describe('mock message extraction (prefill only)', () => {
   it('reads the demo message into the fixture incident', () => {
-    const r = mockExtract(incident.supplier_message.text)
+    const r = mockExtract(incident.supplier_message.text, incident.supplier_message.from_contact)
     expect(r.needs_clarification).toBe(false)
     expect(r.draft_incident).toMatchObject({
       supplier_id: 'S-01',

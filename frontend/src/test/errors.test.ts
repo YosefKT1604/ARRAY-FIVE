@@ -29,9 +29,15 @@ describe('parseErrorBody', () => {
     expect(parseErrorBody(403, { detail: 'U-02 (staff) may not approve or reject plans' }).code).toBe('FORBIDDEN')
   })
 
-  it('shows the backend text in plain words when a 409 code cannot be inferred', () => {
+  it('recognises an already-decided plan', () => {
     const e = parseErrorBody(409, { detail: 'Plan RP-001 is already approved' })
+    expect(e.code).toBe('PLAN_ALREADY_DECIDED')
+    expect(e.userMessage).toMatch(/already decided/)
+  })
+
+  it('shows the backend text in plain words when a 409 code cannot be inferred', () => {
+    const e = parseErrorBody(409, { detail: 'Something odd happened with the order' })
     expect(e.code).toBeUndefined()
-    expect(e.userMessage).toBe('Plan RP-001 is already approved.')
+    expect(e.userMessage).toBe('Something odd happened with the order.')
   })
 })

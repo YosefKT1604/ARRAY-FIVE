@@ -1,3 +1,4 @@
+import { DEMO_TODAY } from '../config'
 import { request } from './client'
 import type {
   ActivityLogEntry,
@@ -14,6 +15,7 @@ import type {
   ExtractionResult,
   ImpactResult,
   Job,
+  PendingDecision,
   PlanEditRequest,
   RecoveryPlan,
   Resource,
@@ -44,8 +46,8 @@ export const rejectPlan = (id: string, body: DecisionRequest) =>
   request<Approval>('POST', `/recovery-plans/${id}/reject`, body)
 
 // ---- Not built yet: answered by MSW in hybrid mode (see mocks/missing-endpoints.ts) ----
-export const extractDisruption = (message: string) =>
-  request<ExtractionResult>('POST', '/disruptions/extract', { message })
+export const extractDisruption = (message: string, from_contact?: string) =>
+  request<ExtractionResult>('POST', '/disruptions/extract', { message, from_contact: from_contact || null })
 export const getExplanation = (id: string) => request<Explanation>('GET', `/disruptions/${id}/explanation`)
 export const editPlan = (id: string, body: PlanEditRequest) => request<RecoveryPlan>('PUT', `/recovery-plans/${id}`, body)
 export const revalidatePlan = (id: string) => request<RecoveryPlan>('POST', `/recovery-plans/${id}/revalidate`)
@@ -61,9 +63,18 @@ export async function getDashboard(): Promise<Dashboard> {
   const active = disruptions.items.filter((d) => d.status !== 'closed')
   const awaiting = active.filter((d) => d.status === 'plans_ready')
   const planLists = await Promise.all(awaiting.map((d) => listPlans(d.id)))
-  const pending_approvals = awaiting.flatMap((disruption, i) =>
-    planLists[i].items.filter((p) => p.status === 'proposed').map((plan) => ({ disruption, plan })),
-  )
-  const upcoming_jobs = [...jobs.items].sort((a, b) => a.event_date.localeCompare(b.event_date))
-  return { upcoming_jobs, active_disruptions: active, pending_approvals }
+
+  const pending_decisions = awaiting.flatMap((disruption, i): PendingDecision[] => {
+    const plans = planLists[i].items.filter((p) => p.status === 'proposed')
+    // Infeasible plans are not "waiting": nobody can approve them.
+    const options = plans.filter((p) => p.validation?.status !== 'infeasible')
+    if (options.length === 0) return []
+    const ranked = options.filter((p) => p.rank != null).sort((a, b) => a.rank! - b.rank!)
+    return [{ disruption, plans, recommended: ranked[0] ?? options[0] }]
+  })
+
+  const upcoming_jobs = jobs.items
+    .filter((j) => j.event_date >= DEMO_TODAY)
+    .sort((a, b) => a.event_date.localeCompare(b.event_date))
+  return { upcoming_jobs, active_disruptions: active, pending_decisions }
 }

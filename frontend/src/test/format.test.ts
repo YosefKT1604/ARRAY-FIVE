@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDateTime, formatMoney } from '../lib/format'
+import { daysFromDemoToday, formatDate, formatDateTime, formatMoney, relativeDay, relativeTime } from '../lib/format'
 
 describe('formatMoney', () => {
   it('formats MYR as RM', () => {
@@ -22,5 +22,23 @@ describe('dates in Asia/Kuala_Lumpur', () => {
   it('converts an offset-less (UTC) timestamp to KL time', () => {
     // 16:30 UTC is 00:30 next day in KL
     expect(formatDateTime('2026-10-21T16:30:00')).toContain('22')
+  })
+})
+
+describe('demo clock', () => {
+  it('formats dates as "Thu 22 Oct"', () => {
+    expect(formatDate('2026-10-22')).toBe('Thu 22 Oct')
+  })
+  it('measures relative days from the demo date, not today', () => {
+    expect(daysFromDemoToday('2026-10-22')).toBe(2)
+    expect(relativeDay('2026-10-22')).toBe('in 2 days')
+    expect(relativeDay('2026-10-20')).toBe('today')
+    expect(relativeDay('2026-10-19')).toBe('yesterday')
+  })
+  it('shows reported_at as relative time', () => {
+    const now = Date.parse('2026-10-22T10:00:00Z')
+    expect(relativeTime('2026-10-22T09:55:00Z', now)).toBe('5 min ago')
+    expect(relativeTime('2026-10-22T10:00:10Z', now)).toBe('just now')
+    expect(relativeTime('2026-10-22T07:00:00Z', now)).toBe('3 h ago')
   })
 })

@@ -7,19 +7,18 @@ const MATERIAL = ['supplier_id', 'resource_id', 'quantity_affected', 'new_arriva
 
 const DATE_WORDS: Record<string, string> = { friday: '2026-10-23', jumaat: '2026-10-23', tomorrow: '2026-10-21', esok: '2026-10-21' }
 
-export function mockExtract(message: string): ExtractionResult {
+export function mockExtract(message: string, fromContact: string | null = null): ExtractionResult {
   const text = message.toLowerCase()
   const evidence: Record<string, string> = {}
   const unresolved: UnresolvedField[] = []
 
-  // The demo WhatsApp message never names the supplier (it arrives from Maju's number), and the
-  // contract's extract request carries only the text. So the mock recognises the fixture message itself.
-  const isDemoMessage = message.trim() === fixtures.incident.supplier_message.text
-  const supplier = fixtures.seed.suppliers.find(
-    (s) =>
-      (isDemoMessage && s.id === fixtures.incident.form_input.supplier_id) ||
-      [s.name, ...s.aliases].some((a) => text.includes(a.toLowerCase())),
-  )
+  // The demo WhatsApp message never names the supplier: it arrives from Maju's number. So the request
+  // carries the sender (`from_contact`), which is matched against each supplier's contact_reference.
+  const bySender = fromContact
+    ? fixtures.seed.suppliers.find((s) => s.contact_reference.toLowerCase() === fromContact.trim().toLowerCase())
+    : undefined
+  const supplier =
+    bySender ?? fixtures.seed.suppliers.find((s) => [s.name, ...s.aliases].some((a) => text.includes(a.toLowerCase())))
   const resource = fixtures.seed.resources.find((r) => [r.name, ...r.aliases].some((a) => text.includes(a.toLowerCase())))
   const qty = /\b(\d{1,4})\b/.exec(message)
   const dateWord = Object.keys(DATE_WORDS).find((w) => text.includes(w))
@@ -27,7 +26,7 @@ export function mockExtract(message: string): ExtractionResult {
     (d) => d.supplier_id === supplier?.id && d.resource_id === resource?.id,
   )
 
-  if (supplier) evidence.supplier_id = isDemoMessage ? `${supplier.name} (the sender)` : supplier.name
+  if (supplier) evidence.supplier_id = bySender ? `${supplier.name} (the sender)` : supplier.name
   if (resource) evidence.resource_id = resource.name
   if (qty) evidence.quantity_affected = qty[0]
   if (dateWord) evidence.new_arrival_date = dateWord

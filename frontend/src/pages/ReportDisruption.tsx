@@ -63,12 +63,13 @@ export function ReportDisruption() {
   const deliveries = useQuery({ queryKey: ['deliveries'], queryFn: listDeliveries })
 
   const [message, setMessage] = useState('')
+  const [fromContact, setFromContact] = useState('')
   const [form, setForm] = useState<FormState>(EMPTY)
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null)
   const [clientErrors, setClientErrors] = useState<Partial<Record<keyof FormState, string>>>({})
 
   const extract = useMutation({
-    mutationFn: (text: string) => extractDisruption(text),
+    mutationFn: (text: string) => extractDisruption(text, fromContact),
     onSuccess: (result) => {
       setExtraction(result)
       setForm(prefill(result))
@@ -180,6 +181,15 @@ export function ReportDisruption() {
           placeholder="e.g. Boss, our chair delivery for tomorrow will be late…"
           className={cn(inputBase, 'mt-3 border-line')}
         />
+        <label className="mt-3 block text-sm">
+          <span className="font-semibold">Who sent it? (optional)</span>
+          <input
+            value={fromContact}
+            onChange={(e) => setFromContact(e.target.value)}
+            placeholder="e.g. a WhatsApp number or contact name"
+            className={cn(inputBase, 'mt-1 border-line')}
+          />
+        </label>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
             type="button"
@@ -192,7 +202,10 @@ export function ReportDisruption() {
           <button
             type="button"
             className={btnSecondary}
-            onClick={() => setMessage(incidentFixture.supplier_message.text)}
+            onClick={() => {
+              setMessage(incidentFixture.supplier_message.text)
+              setFromContact(incidentFixture.supplier_message.from_contact)
+            }}
           >
             Use the demo message
           </button>

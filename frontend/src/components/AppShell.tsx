@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, Outlet } from 'react-router-dom'
 import { getHealth } from '../api/endpoints'
-import { API_MODE } from '../config'
+import { API_MODE, DEMO_TODAY } from '../config'
+import { formatDate } from '../lib/format'
 import { cn } from '../lib/cn'
 import { isDevMode } from '../state/devMode'
 import { updateSession, useSession } from '../state/session'
@@ -74,6 +75,9 @@ export function AppShell() {
             SCDC <span className="text-sm font-normal text-muted">Recovery</span>
           </Link>
           <div className="flex flex-wrap items-center gap-3">
+            <span className="text-xs text-muted" title="Relative dates are measured from this day">
+              Demo date: {formatDate(DEMO_TODAY)}
+            </span>
             <BackendBadge />
             <ModeBadge />
             <UserSwitcher />

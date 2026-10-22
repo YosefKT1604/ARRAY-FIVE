@@ -9,9 +9,9 @@ export function DevPanel() {
   const queryClient = useQueryClient()
 
   return (
-    <details className="group fixed bottom-2 left-2 z-50 w-72 max-w-[calc(100vw-1rem)] rounded-xl border border-line bg-card/95 text-sm shadow-lg">
-      <summary className="w-fit cursor-pointer list-none rounded-xl px-3 py-1 text-xs font-semibold text-muted group-open:w-full">
-        Dev
+    <details className="group fixed bottom-2 left-2 z-50 w-fit max-w-[calc(100vw-1rem)] rounded-full border border-line bg-card/95 text-sm shadow-lg open:w-72 open:rounded-xl">
+      <summary className="cursor-pointer list-none px-3 py-1 text-xs font-semibold whitespace-nowrap text-muted [&::-webkit-details-marker]:hidden">
+        ⚙ Dev
       </summary>
       <div className="max-h-[70vh] space-y-3 overflow-y-auto border-t border-line p-3">
         <label className="block">
@@ -38,6 +38,15 @@ export function DevPanel() {
             }}
           />
           Force a 500 error on every call
+        </label>
+
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={session.staffCanTry}
+            onChange={(e) => updateSession({ staffCanTry: e.target.checked })}
+          />
+          Let Staff press Approve (shows the 403)
         </label>
 
         {API_MODE === 'mock' && (

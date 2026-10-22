@@ -54,13 +54,15 @@ function AffectedCard({ item }: { item: AffectedEntity }) {
         </div>
         <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', badge.tone)}>{badge.label}</span>
       </div>
-      <p className="mt-2">{item.reason}</p>
+      <p className="mt-2">{names.humanize(item.reason)}</p>
       <div className="mt-3">
         <DependencyPath path={item.dependency_path} />
       </div>
       <details className="mt-3 text-sm">
         <summary className="cursor-pointer text-muted">Details</summary>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+          <dt className="text-muted">Original text</dt>
+          <dd>{item.reason}</dd>
           <dt className="text-muted">ID</dt>
           <dd>{item.entity_id}</dd>
           <dt className="text-muted">Status code</dt>
@@ -130,7 +132,7 @@ export function Impact() {
           <h1 className="text-3xl font-semibold">What this affects</h1>
           <DisruptionStatusBadge status={d.status} />
         </div>
-        <p className="mt-1 text-muted">{d.description}</p>
+        <p className="mt-1 text-muted">{names.humanize(d.description)}</p>
       </div>
 
       {impact.isLoading && <LoadingState label="Checking what's affected…" />}
@@ -181,7 +183,12 @@ export function Impact() {
                       </span>
                       {names.label(item.entity_id, item.entity_type)}
                     </p>
-                    <p className="mt-1 text-sm text-muted">{item.reason}</p>
+                    <p className="mt-1 text-sm text-muted">{names.humanize(item.reason)}</p>
+                    <details className="mt-1 text-xs text-muted">
+                      <summary className="cursor-pointer">Details</summary>
+                      <p className="mt-1">Original text: {item.reason}</p>
+                      <p>ID: {item.entity_id}</p>
+                    </details>
                   </li>
                 ))}
               </ul>
@@ -195,7 +202,7 @@ export function Impact() {
               </h2>
               <ul className="mt-2 list-disc pl-5 text-sm">
                 {data.unresolved_facts.map((f, i) => (
-                  <li key={i}>{String(f.note ?? f.fact ?? f.detail ?? JSON.stringify(f))}</li>
+                  <li key={i}>{names.humanize(String(f.note ?? f.fact ?? f.detail ?? JSON.stringify(f)))}</li>
                 ))}
               </ul>
             </section>

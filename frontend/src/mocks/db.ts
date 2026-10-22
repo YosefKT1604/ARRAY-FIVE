@@ -29,6 +29,10 @@ interface MockState {
   impacts: Record<string, ImpactResult>
   plans: RecoveryPlan[]
   approvals: Approval[]
+  /** Demo-only plan versions/statuses (edit, request-info, approvals on edited plans). Latest per plan id. */
+  demoPlans: Record<string, RecoveryPlan>
+  /** Disruptions decided through a mock approval (hybrid mode patches the real disruption list with these). */
+  demoDecided: string[]
   counters: { disruption: number; plan: number; approval: number }
 }
 
@@ -38,6 +42,8 @@ function fresh(): MockState {
     impacts: {},
     plans: [],
     approvals: [],
+    demoPlans: {},
+    demoDecided: [],
     counters: { disruption: 0, plan: 0, approval: 0 },
   }
 }
@@ -48,7 +54,7 @@ const STORAGE_KEY = 'scdc.mockState'
 function restore(): MockState {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw) as MockState
+    if (raw) return { ...fresh(), ...(JSON.parse(raw) as MockState) }
   } catch {
     /* storage unavailable */
   }

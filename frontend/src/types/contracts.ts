@@ -96,11 +96,19 @@ export interface PlanEditRequest {
   assumptions: string[]
 }
 
+/** One disruption that is waiting for a decision, with all its proposed plans. */
+export interface PendingDecision {
+  disruption: Disruption
+  plans: RecoveryPlan[]
+  /** The plan the API ranked first among those that are not infeasible (we never compute rank). */
+  recommended: RecoveryPlan | null
+}
+
 /** Composed in the browser: the backend has no GET /dashboard yet. */
 export interface Dashboard {
   upcoming_jobs: Job[]
   active_disruptions: Disruption[]
-  pending_approvals: { disruption: Disruption; plan: RecoveryPlan }[]
+  pending_decisions: PendingDecision[]
 }
 
 // ---- Errors ----
@@ -114,5 +122,6 @@ export type ErrorCode =
   | 'STALE_PLAN_VERSION'
   | 'PLAN_INFEASIBLE'
   | 'INVALID_STATE_TRANSITION'
+  | 'PLAN_ALREADY_DECIDED' // not in CONTRACTS.md; inferred from the backend's 409 text
   | 'VALIDATION_ERROR'
   | 'INTERNAL_ERROR'

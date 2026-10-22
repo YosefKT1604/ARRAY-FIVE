@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { formatDate } from './format'
 import { listDependencies, listDeliveries, listJobs, listResources, listSuppliers } from '../api/endpoints'
 
 export type EntityKind = 'supplier' | 'delivery' | 'resource' | 'job' | 'commitment'
@@ -58,5 +59,25 @@ export function useNames() {
     }
   }
 
-  return { kindOf, label, resource, supplier, job, delivery, isLoading: jobs.isLoading || resources.isLoading }
+  /**
+   * Makes backend text readable: ISO dates -> "Thu 22 Oct", known entity IDs -> names.
+   * Unknown IDs are left alone. Keep the raw text in a "Details" section.
+   */
+  function humanize(text: string): string {
+    return text
+      .replace(/\b\d{4}-\d{2}-\d{2}\b/g, (d) => formatDate(d))
+      .replace(/\b(?:[A-Z]{1,3})-\d{2,4}\b/g, (id) => {
+        const kind = kindOf(id)
+        if (!kind) return id
+        if (kind === 'delivery') {
+          const d = delivery(id)
+          const s = d && supplier(d.supplier_id)
+          return s ? `${s.aliases?.[0] ?? s.name}'s delivery` : label(id)
+        }
+        if (kind === 'commitment') return label(id).replace('Commitment for', 'the commitment for')
+        return label(id)
+      })
+  }
+
+  return { kindOf, label, humanize, resource, supplier, job, delivery, isLoading: jobs.isLoading || resources.isLoading }
 }

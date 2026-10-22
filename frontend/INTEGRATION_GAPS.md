@@ -17,29 +17,30 @@ Audited from branch `backend` at commit `6ec6ca2` ("Add approve and reject endpo
 | GET `/jobs`, `/resources`, `/dependencies`, `/deliveries` | ✅ | `{"items": [...]}` as specified | Real |
 | GET `/suppliers` | ✅ | Embeds `offerings`, as specified | Real |
 | GET `/dashboard` | ❌ | — | Hybrid: **compose it client-side** from `/jobs` + `/disruptions` + `/disruptions/{id}/recovery-plans` |
-| POST `/disruptions/extract` | ❌ | Depends on P5. ⚠️ The contract request is `{message}` only, but the demo WhatsApp message never names the supplier (it arrives from Maju's number). **Ask P5/P2:** also pass the sender (e.g. `from_contact`) so the supplier can be resolved | Mock (keyword rules; recognises the fixture message as coming from S-01) |
+| POST `/disruptions/extract` | ❌ | Depends on P5. ⚠️ The contract request is `{message}` only, but the demo WhatsApp message never names the supplier (it arrives from Maju's number). **Agreed request: `{message, from_contact}`**, where `from_contact` matches `Supplier.contact_reference` (e.g. `whatsapp:maju-rental (synthetic)`). **Ask P5/P2** to accept it | Mock (keyword rules plus `from_contact` lookup; sends `{message, from_contact}`) |
 | POST `/disruptions` | ✅ partly | Returns 201 `{disruption, incident, validation_errors}`. **No duplicate detection** (no 409 `DUPLICATE_DISRUPTION`). `validation_errors` is always `[]`. Status is always `received`, never `needs_clarification`. `client_request_id` is accepted but ignored | Real; the duplicate demo stays mock-only until P2 adds it |
 | GET `/disruptions`, `/disruptions/{id}` | ✅ | — | Real |
 | POST `/disruptions/{id}/analyze` | ✅ (stub) | Returns `expected_impact.json` for **any** incident (P3's engine not wired in yet). Allowed from status `received` | Real |
 | GET `/disruptions/{id}/impact` | ✅ | 404 if not analyzed yet | Real |
 | POST / GET `/disruptions/{id}/recovery-plans` | ✅ (stub) | Returns the 3 fixture plans with **new IDs** (`RP-001…` numbering continues across disruptions). POST returns **201** and needs status `analyzed` (else 409) | Real. **Never hard-code `RP-001`**; use the IDs returned |
-| GET `/disruptions/{id}/explanation` | ❌ | Depends on P5 | Mock (template text built from the plans, labelled) |
+| GET `/disruptions/{id}/explanation` | ❌ | Depends on P5 | Mock: template text assembled from the real plans (labelled "Demo only"); it never sets a status |
 | GET `/recovery-plans/{id}` | ✅ | — | Real |
-| PUT `/recovery-plans/{id}` (edit → new version) | ❌ | — | Mock. ⚠️ In hybrid mode an edited version exists only in the mock, so approving it must also be mocked (the real backend would return 409 stale version). Label it "Demo only" |
-| POST `/recovery-plans/{id}/revalidate` | ❌ | — | Mock |
+| PUT `/recovery-plans/{id}` (edit → new version) | ❌ | — | Mock, labelled "Demo only". Replays the fixture edit (20 → 10 chairs → infeasible, `QUANTITY_SUFFICIENT`, short 10); any other edit returns `needs_confirmation` ("Mock mode cannot validate this edit"). ⚠️ In hybrid mode the edited version exists only in the mock: reads, approve and reject of that plan are answered by the mock too (the real backend would return 409 stale version) |
+| POST `/recovery-plans/{id}/revalidate` | ❌ | — | Mock ("Demo only"): returns the plan with a fresh `validated_at`; no validation is computed |
 | POST `/recovery-plans/{id}/approve` | ✅ | Body `{plan_version, comments}`. Returns **201** `Approval`. 403 non-owner, 409 wrong version, 409 already decided, 409 infeasible. **`needs_confirmation` CAN be approved** (matches §10 decision #2). Sets the disruption to `decided` | Real |
 | POST `/recovery-plans/{id}/reject` | ✅ | Same as approve | Real |
-| POST `/recovery-plans/{id}/request-info` | ❌ | — | Mock |
+| POST `/recovery-plans/{id}/request-info` | ❌ | — | Mock ("Demo only"): plan becomes `more_info_requested`; comment required |
 | POST `/recovery-plans/{id}/drafts`, POST `/drafts/{id}/approve` | ❌ | Depends on P5 | Mock |
 | GET `/disruptions/{id}/activity-log` | ❌ | No ActivityLog table yet | Mock (labelled "Demo log") |
 
 ## Cross-cutting differences
 
 1. **Error format ≠ §8.** The backend returns RFC 9457 Problem Details (`application/problem+json`): `{type, title, status, detail, instance, errors?}`, where `errors` = `[{loc, msg, type}]` for 422. §8 says `{"error": {code, message, details, request_id}}`. → The frontend error parser accepts **both** shapes. 422 `errors[].loc` gets mapped to form fields.
-2. **No machine-readable error codes.** All 409s look alike (duplicate, stale version, infeasible, already decided, wrong status); only the `detail` text differs. → The UI can't reliably show the right message. **Ask P2:** add a `code` field to the Problem body (e.g. `"code": "STALE_PLAN_VERSION"`), using the §8 code names.
+2. **No machine-readable error codes.** (The UI infers `STALE_PLAN_VERSION`, `PLAN_INFEASIBLE`, `FORBIDDEN` and an extra `PLAN_ALREADY_DECIDED` from the `detail` text. If P2 words these differently, the UI falls back to showing the backend's own text.) All 409s look alike (duplicate, stale version, infeasible, already decided, wrong status); only the `detail` text differs. → The UI can't reliably show the right message. **Ask P2:** add a `code` field to the Problem body (e.g. `"code": "STALE_PLAN_VERSION"`), using the §8 code names.
 3. **Auth:** header `X-User-Id` (`U-01` owner, `U-02` staff). A missing or unknown user gets **401** (not in the contract), but only on endpoints that need a user (currently approve and reject). Read endpoints such as `/jobs` work with no header (verified 22 Oct 2026). → The UI always sends the header from the user switcher and handles 401.
 4. **IDs** are generated by counting rows (`D-001`, `RP-004`…), so they change after a reseed. Don't hard-code them.
-5. **Timestamps** are returned in UTC. The UI converts them to `Asia/Kuala_Lumpur` for display.
+5. **Plan validation timestamps:** `validation.validated_at` is missing in the fixture plans (the type allows it). The UI shows it only when present.
+6. **Timestamps** are returned in UTC. The UI converts them to `Asia/Kuala_Lumpur` for display.
 
 ## Asks for P2 (priority order)
 1. Add run instructions to the README (uv, Python 3.13, seed, then uvicorn), and ideally run the seed automatically on startup when the DB is empty.
