@@ -7,6 +7,7 @@ from app.models.disruption import Disruption
 from app.schemas.disruption import DisruptionCreate
 from app.services.activity_log import log_activity
 from app.services.impact import analyze_impact
+from app.services.snapshot import build_snapshot
 from contracts import NormalizedIncident, DisruptionStatus, ImpactResult
 from contracts.enums import ActivityType
 
@@ -49,7 +50,8 @@ def get_disruption(db: Session, disruption_id: str) -> Disruption | None:
     return db.get(Disruption, disruption_id)
 
 def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
-    impact = analyze_impact(NormalizedIncident.model_validate(disruption.incident))
+    incident = NormalizedIncident.model_validate(disruption.incident)
+    impact = analyze_impact(incident, build_snapshot(db, incident))
     disruption.impact = impact.model_dump(mode="json")
     disruption.status = DisruptionStatus.ANALYZED
     log_activity(db, disruption.id, ActivityType.ANALYSIS_COMPLETED, details={"affected_count": len(impact.affected_entities)})

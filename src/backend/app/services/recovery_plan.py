@@ -5,6 +5,7 @@ from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
 from app.services.activity_log import log_activity
 from app.services.recovery import generate_plans
+from app.services.snapshot import build_snapshot
 from contracts import RecoveryPlan, DisruptionStatus, ImpactResult, NormalizedIncident
 from contracts.enums import ActivityType
 
@@ -22,10 +23,11 @@ def with_new_id(plan: RecoveryPlan, plan_id: str) -> RecoveryPlan:
 def create_recovery_plans(db: Session, disruption: Disruption) -> list[RecoveryPlan]:
     incident = NormalizedIncident.model_validate(disruption.incident)
     impact = ImpactResult.model_validate(disruption.impact)
+    snapshot = build_snapshot(db, incident)
     count = db.scalar(select(func.count()).select_from(RecoveryPlanRecord))
 
     plans = []
-    for number, plan in enumerate(generate_plans(incident, impact), start=count + 1):
+    for number, plan in enumerate(generate_plans(incident, snapshot, impact), start=count + 1):
         plan = with_new_id(plan, f"RP-{number:03d}")
         db.add(RecoveryPlanRecord(id=plan.id, disruption_id=disruption.id, status=plan.status,
                                   plan=plan.model_dump(mode="json")))
