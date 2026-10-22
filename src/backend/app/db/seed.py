@@ -8,6 +8,7 @@ from sqlalchemy import select, func
 from app.models.approval import Approval
 from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
+from app.models.activity_log import ActivityLog
 from sqlalchemy.orm import Session
 
 from app.db.database import engine, Base, SessionLocal
