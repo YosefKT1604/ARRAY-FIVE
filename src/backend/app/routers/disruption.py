@@ -3,8 +3,10 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 from app.dependencies import DbSession
 from app.models.disruption import Disruption
+from app.schemas.activity_log import ActivityLogList
 from app.schemas.disruption import DisruptionCreate, DisruptionCreated, DisruptionOut, DisruptionList
 from app.schemas.recovery_plan import RecoveryPlanList
+from app.services.activity_log import list_activity
 from app.services.disruption import create_disruption, list_disruptions, get_disruption, analyze_disruption
 from app.services.recovery_plan import create_recovery_plans, list_recovery_plans
 from app.errors import ErrorCode, ApiError
@@ -59,3 +61,8 @@ def generate_recovery_plans(disruption_id: str, db: DbSession) -> RecoveryPlanLi
 def get_recovery_plans(disruption_id: str, db: DbSession) -> RecoveryPlanList:
     get_disruption_or_404(db, disruption_id)
     return RecoveryPlanList(items=list_recovery_plans(db, disruption_id))
+
+@router.get("/{disruption_id}/activity-log", response_model=ActivityLogList)
+def get_activity_log(disruption_id: str, db: DbSession) -> ActivityLogList:
+    get_disruption_or_404(db, disruption_id)
+    return ActivityLogList(items=list_activity(db, disruption_id))
