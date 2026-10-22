@@ -323,24 +323,28 @@ export function PlanReview() {
           </p>
         )}
 
-        <label className="block text-sm">
-          <span className="font-semibold">Comment</span>{' '}
-          <span className="text-muted">(needed to reject or to ask for more information)</span>
-          <textarea
-            value={comment}
-            onChange={(e) => {
-              setComment(e.target.value)
-              setCommentError(null)
-            }}
-            rows={2}
-            disabled={!proposed || !mayAct}
-            className={cn(inputBase, 'mt-1', commentError ? 'border-bad' : 'border-line')}
-          />
-        </label>
-        {commentError && (
-          <p role="alert" className="-mt-2 text-sm font-medium text-bad">
-            {commentError}
-          </p>
+        {proposed && (
+          <>
+            <label className="block text-sm">
+              <span className="font-semibold">Comment</span>{' '}
+              <span className="text-muted">(needed to reject or to ask for more information)</span>
+              <textarea
+                value={comment}
+                onChange={(e) => {
+                  setComment(e.target.value)
+                  setCommentError(null)
+                }}
+                rows={2}
+                disabled={!mayAct}
+                className={cn(inputBase, 'mt-1', commentError ? 'border-bad' : 'border-line')}
+              />
+            </label>
+            {commentError && (
+              <p role="alert" className="-mt-2 text-sm font-medium text-bad">
+                {commentError}
+              </p>
+            )}
+          </>
         )}
 
         {mode === 'confirm_open' && (

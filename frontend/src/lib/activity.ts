@@ -16,6 +16,9 @@ export interface ActivityContext {
 
 const trimDot = (t: string) => t.replace(/[.\s]+$/, '')
 
+/** "version 1 of " when the entry says which version was decided. */
+const versionOf = (d: Record<string, unknown>) => (typeof d.plan_version === 'number' ? `version ${d.plan_version} of ` : '')
+
 /** One log entry as a plain-language sentence. Raw type and details stay in the "Details" section. */
 export function describeActivity(entry: ActivityLogEntry, ctx: ActivityContext): string {
   const who = actorName(entry.actor_id)
@@ -44,11 +47,11 @@ export function describeActivity(entry: ActivityLogEntry, ctx: ActivityContext):
     case 'plan_revalidated':
       return `${plan} was checked again.`
     case 'plan_approved':
-      return `${who} approved ${plan}.`
+      return `${who} approved ${versionOf(d)}${plan}.`
     case 'plan_rejected':
-      return `${who} rejected ${plan}.`
+      return `${who} rejected ${versionOf(d)}${plan}.`
     case 'info_requested':
-      return `${who} asked for more information on ${plan}.`
+      return `${who} asked for more information on ${versionOf(d)}${plan}.`
     case 'approval_denied':
       return `${who} tried to approve or reject ${plan} but isn't allowed.`
     case 'draft_created':

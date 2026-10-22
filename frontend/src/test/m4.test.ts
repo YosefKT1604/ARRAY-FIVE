@@ -52,3 +52,10 @@ describe('draft placeholders', () => {
     expect(parts.map((p) => p.placeholder)).toEqual([false, true, false])
   })
 })
+
+describe('activity log versions', () => {
+  it('says which version was approved', () => {
+    const e: ActivityLogEntry = { id: 'LOG-2', disruption_id: 'D-001', plan_id: 'RP-001', actor_id: 'U-01', activity_type: 'plan_approved', details: { plan_version: 1 }, created_at: '2026-10-20T03:00:00Z' }
+    expect(describeActivity(e, { planTitle: () => 'Rent 20 chairs.', humanize: (t) => t })).toBe('Nurul approved version 1 of ‘Rent 20 chairs’.')
+  })
+})

@@ -12,6 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // Tests always run against the mocks, whatever the developer's own VITE_API_MODE is.
+    env: { VITE_API_MODE: 'mock' },
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],

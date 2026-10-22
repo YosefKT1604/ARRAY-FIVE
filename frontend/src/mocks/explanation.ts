@@ -30,7 +30,8 @@ export function buildExplanation(disruptionId: string, plans: RecoveryPlan[]): E
     const limitations: string[] = []
     for (const c of plan.validation?.checks ?? []) if (c.result !== 'pass') limitations.push(c.detail)
     limitations.push(...(plan.validation?.unresolved_assumptions ?? []))
-    if (!plan.estimated_cost) limitations.push('The cost is not known yet.')
+    // A demo-edited plan shows "Cost will be recalculated" instead, so this would contradict it.
+    if (!plan.estimated_cost && plan.created_by !== 'user_edit') limitations.push('The cost is not known yet.')
 
     return {
       plan_id: plan.id,
@@ -52,7 +53,7 @@ export function buildExplanation(disruptionId: string, plans: RecoveryPlan[]): E
     next_steps:
       works > 0
         ? ['Review the recommended option and approve it if it suits you.']
-        : ['No option works yet. Confirm the open questions with your suppliers, then check again.'],
+        : ['Confirm the open questions with your suppliers, then check again.'],
     generated_by: 'template',
     fallback_used: true,
     unsupported_claims_removed: 0,
