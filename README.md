@@ -417,3 +417,19 @@ The MVP is ready when:
 - Important decisions are recorded.
 - The demo can be reproduced from documented setup instructions.
 - The repository matches the demonstrated functionality.
+
+## 18. Running Locally
+
+Requires Python 3.13 and [uv](https://docs.astral.sh/uv/).
+
+Run these from `src/backend`:
+
+```bash
+uv sync
+uv run python -m app.db.seed
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+The API is then at `http://localhost:8000/api/v1`, and http://localhost:8000/docs`.
+
+Running the seed command again resets the database to the demo data.
