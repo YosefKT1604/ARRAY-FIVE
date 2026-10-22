@@ -3,6 +3,8 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { ComingSoon } from './pages/ComingSoon'
 import { Dashboard } from './pages/Dashboard'
+import { Impact } from './pages/Impact'
+import { ReportDisruption } from './pages/ReportDisruption'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -13,8 +15,8 @@ const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { path: '/', element: <Dashboard /> },
-      { path: '/report', element: <ComingSoon title="Report a problem" milestone="M2" /> },
-      { path: '/disruptions/:id/impact', element: <ComingSoon title="Impact" milestone="M2" /> },
+      { path: '/report', element: <ReportDisruption /> },
+      { path: '/disruptions/:id/impact', element: <Impact /> },
       { path: '/disruptions/:id/plans', element: <ComingSoon title="Recovery plans" milestone="M3" /> },
       { path: '/plans/:planId', element: <ComingSoon title="Plan review" milestone="M3" /> },
       { path: '/plans/:planId/drafts', element: <ComingSoon title="Drafts" milestone="M4" /> },

@@ -3,6 +3,7 @@ import { Link, Outlet } from 'react-router-dom'
 import { getHealth } from '../api/endpoints'
 import { API_MODE } from '../config'
 import { cn } from '../lib/cn'
+import { isDevMode } from '../state/devMode'
 import { updateSession, useSession } from '../state/session'
 import { USERS, type UserId } from '../types/contracts'
 import { DevPanel } from './DevPanel'
@@ -28,7 +29,12 @@ function BackendBadge() {
     enabled: API_MODE !== 'mock',
     retry: false,
   })
+  const { force500 } = useSession()
   if (API_MODE === 'mock') return null
+  // The force-500 toggle blocks /health too, so say that, rather than claiming the backend is down.
+  if (force500) {
+    return <span className="rounded-full bg-warn-bg px-2.5 py-1 text-xs font-semibold text-warn">Simulated error (dev)</span>
+  }
   const tone = isLoading ? 'bg-info-bg text-muted' : isSuccess ? 'bg-ok-bg text-ok' : 'bg-bad-bg text-bad'
   const text = isLoading ? 'Checking backend…' : isSuccess ? 'Backend connected' : 'Backend unreachable'
   return <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', tone)}>{text}</span>
@@ -77,7 +83,7 @@ export function AppShell() {
       <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
         <Outlet />
       </main>
-      {import.meta.env.DEV && <DevPanel />}
+      {isDevMode() && <DevPanel />}
     </div>
   )
 }

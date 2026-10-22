@@ -1,6 +1,7 @@
 import { http, HttpResponse, type RequestHandler } from 'msw'
 import { API_BASE } from '../config'
 import type { DecisionRequest } from '../types/contracts'
+import { mockExtract } from './extract'
 import {
   analyzeMockDisruption,
   createMockDisruption,
@@ -44,6 +45,31 @@ export const mockedBackendHandlers: RequestHandler[] = [
   http.get(url('/disruptions'), () => HttpResponse.json({ items: state.disruptions })),
   http.post(url('/disruptions'), async ({ request }) => {
     const body = (await request.json()) as Parameters<typeof createMockDisruption>[0]
+    const fieldProblems = validateDisruptionBody(body)
+    if (fieldProblems.length)
+      return HttpResponse.json(
+        { type: 'about:blank', title: 'Unprocessable Entity', status: 422, detail: 'Validation failed', instance: '/disruptions', errors: fieldProblems },
+        { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
+      )
+    // Mock-only (the real backend has no duplicate check yet): answers in the contract section 8 shape.
+    const existing = state.disruptions.find(
+      (d) =>
+        d.status !== 'closed' &&
+        d.incident.delivery_id === (body.delivery_id ?? null) &&
+        d.incident.new_arrival_date === (body.new_arrival_date ?? null),
+    )
+    if (existing)
+      return HttpResponse.json(
+        {
+          error: {
+            code: 'DUPLICATE_DISRUPTION',
+            message: `This delay is already reported as ${existing.id}.`,
+            details: [{ field: 'existing_id', issue: existing.id }],
+            request_id: 'mock-dup',
+          },
+        },
+        { status: 409 },
+      )
     const { disruption, incident } = createMockDisruption(body)
     return HttpResponse.json({ disruption, incident, validation_errors: [] }, { status: 201 })
   }),
@@ -81,6 +107,17 @@ export const mockedBackendHandlers: RequestHandler[] = [
   http.post(url('/recovery-plans/:id/approve'), (ctx) => decide(ctx, 'approved')),
   http.post(url('/recovery-plans/:id/reject'), (ctx) => decide(ctx, 'rejected')),
 ]
+
+/** Mock-only business rules: the material fields of CONTRACTS.md section 6.1 must be present. */
+function validateDisruptionBody(body: Parameters<typeof createMockDisruption>[0]) {
+  const bad = (field: string, msg: string) => ({ loc: ['body', field], msg, type: 'value_error' })
+  const problems = []
+  if (!body.supplier_id) problems.push(bad('supplier_id', 'Choose the supplier'))
+  if (!body.resource_id) problems.push(bad('resource_id', 'Choose what is affected'))
+  if (body.quantity_affected == null || body.quantity_affected < 1) problems.push(bad('quantity_affected', 'Must be at least 1'))
+  if (!body.new_arrival_date) problems.push(bad('new_arrival_date', 'Enter the new arrival date'))
+  return problems
+}
 
 async function decide(
   { params, request }: { params: Record<string, unknown>; request: Request },
@@ -123,4 +160,9 @@ async function decide(
  * Mocks of endpoints the backend has NOT built (list: missing-endpoints.ts). Always registered
  * in `mock` and `hybrid` modes. Handlers are added milestone by milestone.
  */
-export const missingEndpointHandlers: RequestHandler[] = []
+export const missingEndpointHandlers: RequestHandler[] = [
+  http.post(url('/disruptions/extract'), async ({ request }) => {
+    const { message } = (await request.json()) as { message: string }
+    return HttpResponse.json(mockExtract(message))
+  }),
+]

@@ -42,11 +42,39 @@ function fresh(): MockState {
   }
 }
 
-export let state: MockState = fresh()
+const STORAGE_KEY = 'scdc.mockState'
+
+/** A page reload mid-demo must not wipe the mock business, so keep it for the tab's lifetime. */
+function restore(): MockState {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw) as MockState
+  } catch {
+    /* storage unavailable */
+  }
+  return fresh()
+}
+
+export let state: MockState = restore()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    } catch {
+      /* ignore */
+    }
+  })
+}
 
 /** Back to an empty business, like re-running the backend seed. */
 export function resetMockState() {
   state = fresh()
+  try {
+    sessionStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* ignore */
+  }
 }
 
 export function userRole(userId: string | null): 'owner' | 'staff' | 'viewer' | null {

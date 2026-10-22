@@ -17,7 +17,7 @@ Audited from branch `backend` at commit `6ec6ca2` ("Add approve and reject endpo
 | GET `/jobs`, `/resources`, `/dependencies`, `/deliveries` | ✅ | `{"items": [...]}` as specified | Real |
 | GET `/suppliers` | ✅ | Embeds `offerings`, as specified | Real |
 | GET `/dashboard` | ❌ | — | Hybrid: **compose it client-side** from `/jobs` + `/disruptions` + `/disruptions/{id}/recovery-plans` |
-| POST `/disruptions/extract` | ❌ | Depends on P5 | Mock |
+| POST `/disruptions/extract` | ❌ | Depends on P5. ⚠️ The contract request is `{message}` only, but the demo WhatsApp message never names the supplier (it arrives from Maju's number). **Ask P5/P2:** also pass the sender (e.g. `from_contact`) so the supplier can be resolved | Mock (keyword rules; recognises the fixture message as coming from S-01) |
 | POST `/disruptions` | ✅ partly | Returns 201 `{disruption, incident, validation_errors}`. **No duplicate detection** (no 409 `DUPLICATE_DISRUPTION`). `validation_errors` is always `[]`. Status is always `received`, never `needs_clarification`. `client_request_id` is accepted but ignored | Real; the duplicate demo stays mock-only until P2 adds it |
 | GET `/disruptions`, `/disruptions/{id}` | ✅ | — | Real |
 | POST `/disruptions/{id}/analyze` | ✅ (stub) | Returns `expected_impact.json` for **any** incident (P3's engine not wired in yet). Allowed from status `received` | Real |
