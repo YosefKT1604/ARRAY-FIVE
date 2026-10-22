@@ -430,6 +430,6 @@ uv run python -m app.db.seed
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-The API is then at `http://localhost:8000/api/v1`, and http://localhost:8000/docs`.
+The API is then at `http://localhost:8000/api/v1`, and the interactive docs are at http://localhost:8000/docs`.
 
-Running the seed command again resets the database to the demo data.
+The server creates and seeds the database on first start. Running the seed command again resets it to the demo data.
