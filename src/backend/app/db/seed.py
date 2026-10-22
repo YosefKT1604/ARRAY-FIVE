@@ -17,6 +17,7 @@ from app.models.dependency import Dependency
 from app.models.job import Job
 from app.models.resource import Resource
 from app.models.supplier import Supplier, SupplierOffering
+from app.models.commitment import Commitment
 
 SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.json"
 
@@ -28,8 +29,9 @@ TABLES = [
     ("deliveries", Delivery),
     ("jobs", Job),
     ("dependencies", Dependency),
+    ("commitments", Commitment),
 ]
-DATE_FIELDS = {"expected_date", "event_date", "deadline", "required_by"}
+DATE_FIELDS = {"expected_date", "event_date", "deadline", "required_by", "required_date"}
 TIMESTAMP_FIELDS = {"verified_at", "confirmed_at"}
 
 def parse_timestamp(value: str | None) -> datetime | None:

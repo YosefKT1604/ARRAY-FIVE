@@ -1,4 +1,7 @@
 import pytest
+from sqlalchemy import select
+from app.db.seed import load_fixture
+from app.models.commitment import Commitment
 
 
 @pytest.mark.parametrize(("path", "count"), [
@@ -21,3 +24,11 @@ def test_suppliers_embed_offerings_with_money_as_string(seeded_client):
 def test_dates_are_returned_as_iso_strings(seeded_client):
     delivery = seeded_client.get("/api/v1/deliveries").json()["items"][0]
     assert delivery["expected_date"] == "2026-10-21"
+
+def test_seed_loads_commitments(session_factory):
+    with session_factory() as session:
+        load_fixture(session)
+        commitments = session.scalars(select(Commitment).order_by(Commitment.id)).all()
+
+    assert [c.id for c in commitments] == ["CM-01", "CM-02", "CM-03"]
+    assert commitments[0].reschedulable is False
