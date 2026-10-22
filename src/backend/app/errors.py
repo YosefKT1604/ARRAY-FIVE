@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from enum import StrEnum
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -7,6 +8,31 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.schemas.problem import Problem
 
+class ErrorCode(StrEnum):
+    BAD_REQUEST = "BAD_REQUEST"
+    UNAUTHORIZED = "UNAUTHORIZED"
+    FORBIDDEN = "FORBIDDEN"
+    NOT_FOUND = "NOT_FOUND"
+    DUPLICATE_DISRUPTION = "DUPLICATE_DISRUPTION"
+    STALE_PLAN_VERSION = "STALE_PLAN_VERSION"
+    PLAN_INFEASIBLE = "PLAN_INFEASIBLE"
+    INVALID_STATE_TRANSITION = "INVALID_STATE_TRANSITION"
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
+
+DEFAULT_CODE = {
+    400: ErrorCode.BAD_REQUEST,
+    401: ErrorCode.UNAUTHORIZED,
+    403: ErrorCode.FORBIDDEN,
+    404: ErrorCode.NOT_FOUND,
+    422: ErrorCode.VALIDATION_ERROR,
+    500: ErrorCode.INTERNAL_ERROR,
+}
+
+class ApiError(StarletteHTTPException):
+    def __init__(self, status_code: int, code: ErrorCode, detail: str):
+        super().__init__(status_code=status_code, detail=detail)
+        self.code = code
 
 def problem_response(problem: Problem, headers: dict[str, str] | None = None) -> JSONResponse:
     return JSONResponse(problem.model_dump(exclude_none=True),
@@ -23,6 +49,7 @@ def register_error_handlers(app: FastAPI) -> None:
             status=exc.status_code,
             detail=exc.detail,
             instance=request.url.path,
+            code=getattr(exc, "code", None) or DEFAULT_CODE.get(exc.status_code),
         )
         return problem_response(problem, exc.headers)
 
@@ -34,5 +61,6 @@ def register_error_handlers(app: FastAPI) -> None:
             detail="Request validation failed.",
             instance=request.url.path,
             errors=[{"loc": error["loc"], "msg": error["msg"], "type": error["type"]} for error in exc.errors()],
+            code=ErrorCode.VALIDATION_ERROR
         )
         return problem_response(problem)

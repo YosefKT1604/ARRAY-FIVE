@@ -11,3 +11,4 @@ class Problem(BaseModel):
     detail : str | None = None
     instance : str | None = None
     errors: list[dict[str, Any]] | None = None
+    code: str | None = None
