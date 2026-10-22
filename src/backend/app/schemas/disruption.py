@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from contracts import DisruptionType, InputSource, NormalizedIncident
 from contracts.enums import DisruptionStatus
@@ -12,7 +12,7 @@ class DisruptionCreate(BaseModel):
     supplier_id: str | None = None
     resource_id: str | None = None
     delivery_id: str | None = None
-    quantity_affected: int | None = None
+    quantity_affected: int | None = Field(default=None, ge=1)
     original_arrival_date: date | None = None
     new_arrival_date: date | None = None
     description: str

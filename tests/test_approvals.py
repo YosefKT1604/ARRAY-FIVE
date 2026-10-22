@@ -85,7 +85,7 @@ def test_owner_requests_more_info(client):
 
 def test_plan_can_be_approved_after_info_requested(client):
     prepare_plans(client)
-    client.post("/api/v1/recovery-plans/RP-001/request-info", json=VERSION_1, headers=OWNER)
+    client.post("/api/v1/recovery-plans/RP-001/request-info", json={"plan_version": 1, "comments": "Is the price confirmed?"}, headers=OWNER)
 
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
     assert response.status_code == 201
@@ -93,6 +93,21 @@ def test_plan_can_be_approved_after_info_requested(client):
 def test_staff_cannot_request_info(client):
     prepare_plans(client)
 
-    response = client.post("/api/v1/recovery-plans/RP-001/request-info", json=VERSION_1, headers=STAFF)
+    response = client.post("/api/v1/recovery-plans/RP-001/request-info", json={"plan_version": 1, "comments": "Is the price confirmed?"}, headers=STAFF)
     assert response.status_code == 403
     assert response.json()["code"] == "FORBIDDEN"
+
+def test_second_plan_cannot_be_approved(client):
+    prepare_plans(client)
+    client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
+
+    response = client.post("/api/v1/recovery-plans/RP-003/approve", json=VERSION_1, headers=OWNER)
+    assert response.status_code == 409
+    assert response.json()["code"] == "INVALID_STATE_TRANSITION"
+
+def test_request_info_needs_a_comment(client):
+    prepare_plans(client)
+
+    response = client.post("/api/v1/recovery-plans/RP-001/request-info", json=VERSION_1, headers=OWNER)
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"

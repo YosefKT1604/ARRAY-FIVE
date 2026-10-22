@@ -78,3 +78,23 @@ def test_needs_clarification_cannot_be_analyzed(client):
     response = client.post("/api/v1/disruptions/D-001/analyze")
     assert response.status_code == 409
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
+
+def test_decided_disruption_cannot_be_analyzed_again(client):
+    client.post("/api/v1/disruptions", json=FORM)
+    client.post("/api/v1/disruptions/D-001/analyze")
+    client.post("/api/v1/disruptions/D-001/recovery-plans")
+    client.post("/api/v1/recovery-plans/RP-001/approve", json={"plan_version": 1}, headers={"X-User-Id": "U-01"})
+
+    response = client.post("/api/v1/disruptions/D-001/analyze")
+    assert response.status_code == 409
+    assert response.json()["code"] == "INVALID_STATE_TRANSITION"
+
+def test_zero_quantity_is_rejected(client):
+    response = client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": 0})
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"
+
+def test_unknown_method_has_error_code(client):
+    response = client.delete("/api/v1/jobs")
+    assert response.status_code == 405
+    assert response.json()["code"] == "BAD_REQUEST"

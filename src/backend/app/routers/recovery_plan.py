@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.dependencies import DbSession
 from app.errors import ApiError, ErrorCode
+from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
 from app.schemas.approval import ApprovalOut, DecisionRequest
 from app.services.activity_log import log_activity
@@ -10,7 +11,7 @@ from app.services.approval import record_decision
 from app.services.identity import CurrentUser, CurrentUserDep
 from app.services.permissions import can_decide
 from app.services.recovery_plan import get_recovery_plan, to_contract
-from contracts import Decision, PlanStatus, RecoveryPlan, ValidationStatus
+from contracts import Decision, PlanStatus, RecoveryPlan, ValidationStatus, DisruptionStatus
 from contracts.enums import ActivityType
 
 router = APIRouter(prefix="/recovery-plans", tags=["recovery-plans"])
@@ -42,6 +43,10 @@ def get_recovery_plan_by_id(plan_id: str, db: DbSession) -> RecoveryPlan:
 def approve_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: DbSession) -> ApprovalOut:
     record = get_plan_or_404(db, plan_id)
     plan = check_can_decide(db, record, user, data)
+    disruption = db.get(Disruption, record.disruption_id)
+    if disruption.status == DisruptionStatus.DECIDED:
+        raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION,
+                       detail=f"Disruption {disruption.id} already has an approved plan")
     if plan.validation is None or plan.validation.status == ValidationStatus.INFEASIBLE:
         raise ApiError(status_code=409, code=ErrorCode.PLAN_INFEASIBLE, detail=f"Plan {plan_id} is infeasible and cannot be approved")
     approval = record_decision(db, record, user.id, Decision.APPROVED, data)
@@ -58,5 +63,7 @@ def reject_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: D
 def request_info(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: DbSession) -> ApprovalOut:
     record = get_plan_or_404(db, plan_id)
     check_can_decide(db, record, user, data)
+    if not data.comments.strip():
+        raise HTTPException(status_code=422, detail="Say what information is needed in comments")
     approval = record_decision(db, record, user.id, Decision.MORE_INFO_REQUESTED, data)
     return ApprovalOut.model_validate(approval)

@@ -20,6 +20,7 @@ class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     INTERNAL_ERROR = "INTERNAL_ERROR"
 
+# Used when an error is raised without an explicit code.
 DEFAULT_CODE = {
     400: ErrorCode.BAD_REQUEST,
     401: ErrorCode.UNAUTHORIZED,
@@ -35,11 +36,12 @@ class ApiError(StarletteHTTPException):
         self.code = code
 
 def problem_response(problem: Problem, headers: dict[str, str] | None = None) -> JSONResponse:
-    return JSONResponse(problem.model_dump(exclude_none=True),
-                        status_code=problem.status,
-                        headers=headers,
-                        media_type="application/problem+json",
-                        )
+    return JSONResponse(
+        problem.model_dump(exclude_none=True),
+        status_code=problem.status,
+        headers=headers,
+        media_type="application/problem+json",
+    )
 
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(StarletteHTTPException)
@@ -49,7 +51,7 @@ def register_error_handlers(app: FastAPI) -> None:
             status=exc.status_code,
             detail=exc.detail,
             instance=request.url.path,
-            code=getattr(exc, "code", None) or DEFAULT_CODE.get(exc.status_code),
+            code=getattr(exc, "code", None) or DEFAULT_CODE.get(exc.status_code, ErrorCode.BAD_REQUEST),
         )
         return problem_response(problem, exc.headers)
 
@@ -62,5 +64,16 @@ def register_error_handlers(app: FastAPI) -> None:
             instance=request.url.path,
             errors=[{"loc": error["loc"], "msg": error["msg"], "type": error["type"]} for error in exc.errors()],
             code=ErrorCode.VALIDATION_ERROR,
+        )
+        return problem_response(problem)
+
+    @app.exception_handler(Exception)
+    async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        problem = Problem(
+            title="Internal Server Error",
+            status=500,
+            detail="An unexpected error occurred.",
+            instance=request.url.path,
+            code=ErrorCode.INTERNAL_ERROR,
         )
         return problem_response(problem)
