@@ -7,7 +7,9 @@ from app.models.approval import Approval
 from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
 from app.schemas.approval import DecisionRequest
+from app.services.activity_log import log_activity
 from contracts import Decision, DisruptionStatus, PlanStatus
+from contracts.enums import ActivityType
 
 
 def next_approval_id(db: Session):
@@ -31,5 +33,7 @@ def record_decision(db: Session, record: RecoveryPlanRecord, reviewer_id: str, d
     else:
         record.status = PlanStatus.REJECTED
     db.add(approval)
+    activity_type = ActivityType.PLAN_APPROVED if decision == Decision.APPROVED else ActivityType.PLAN_REJECTED
+    log_activity(db, record.disruption_id, activity_type, actor_id=reviewer_id, plan_id=record.id, details={"approval_id": approval.id, "plan_version": data.plan_version})
     db.commit()
     return approval

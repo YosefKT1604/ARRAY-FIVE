@@ -5,8 +5,10 @@ from sqlalchemy import select, func
 
 from app.models.disruption import Disruption
 from app.schemas.disruption import DisruptionCreate
+from app.services.activity_log import log_activity
 from app.services.impact import analyze_impact
 from contracts import NormalizedIncident, DisruptionStatus, ImpactResult
+from contracts.enums import ActivityType
 
 
 def next_disruption_id(db: Session) -> str:
@@ -33,6 +35,7 @@ def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
         severity=None,
     )
     db.add(disruption)
+    log_activity(db, disruption_id=disruption.id, activity_type=ActivityType.DISRUPTION_REPORTED, details={"type": incident.type})
     db.commit()
     return disruption
 
@@ -48,6 +51,7 @@ def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
     impact = analyze_impact(NormalizedIncident.model_validate(disruption.incident))
     disruption.impact = impact.model_dump(mode="json")
     disruption.status = DisruptionStatus.ANALYZED
+    log_activity(db, disruption.id, ActivityType.ANALYSIS_COMPLETED, details={"affected_count": len(impact.affected_entities)})
     db.commit()
     return impact
 

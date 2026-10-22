@@ -3,8 +3,10 @@ from sqlalchemy.orm import Session
 
 from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
+from app.services.activity_log import log_activity
 from app.services.recovery import generate_plans
 from contracts import RecoveryPlan, DisruptionStatus, ImpactResult, NormalizedIncident
+from contracts.enums import ActivityType
 
 
 def to_contract(record: RecoveryPlanRecord) -> RecoveryPlan:
@@ -30,6 +32,7 @@ def create_recovery_plans(db: Session, disruption: Disruption) -> list[RecoveryP
         plans.append(plan)
 
     disruption.status = DisruptionStatus.PLANS_READY
+    log_activity(db, disruption.id, ActivityType.PLANS_GENERATED, details={"plan_ids": [plan.id for plan in plans]})
     db.commit()
     return plans
 
