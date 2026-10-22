@@ -526,6 +526,35 @@ class RawPlanComparison(OutputModel):
     limitations: list[RawItem] = Field(default_factory=list)
 
 
+class RecipientType(str, Enum):
+    """Who a draft message is for."""
+
+    SUPPLIER = "supplier"
+    CUSTOMER = "customer"
+
+
+class DraftMessage(OutputModel):
+    """A message for the owner to review (CONTRACTS.md §6.7). It is never sent by the system.
+
+    `placeholders` lists the gaps in `body` the owner must fill in, without brackets ("DELIVERY_ADDRESS").
+    """
+
+    id: str
+    plan_id: str
+    recipient_type: RecipientType
+    recipient_id: str | None
+    body: str
+    placeholders: list[str] = Field(default_factory=list)
+    status: Literal["draft", "approved"] = "draft"
+    generated_by: str
+
+
+class RawDraft(OutputModel):
+    """What the drafting model must return: the polished message text only."""
+
+    body: str = Field(min_length=1)
+
+
 class RawExplanation(OutputModel):
     """What the explanation model must return. Nothing here is trusted until the claim check."""
 

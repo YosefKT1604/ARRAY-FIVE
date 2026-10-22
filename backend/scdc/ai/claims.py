@@ -63,7 +63,8 @@ BUSINESS_NAME_RE = re.compile(rf"(?:[A-Z][\w&'-]*\s+){{0,4}}{BUSINESS_WORDS}\b")
 # Ordinary words that can start a capitalised phrase before a real name ("Ask Cahaya Event Rentals").
 LEADING_WORDS = {"the", "a", "an", "this", "that", "our", "your", "their", "both", "ask", "contact", "from", "with",
                  "and", "or", "by", "via", "use", "order", "rent", "call", "email", "tell", "unlike", "while",
-                 "but", "if", "since", "because", "as", "for", "to", "at", "in", "on", "only"}
+                 "but", "if", "since", "because", "as", "for", "to", "at", "in", "on", "only",
+                 "hi", "hello", "dear", "thanks", "thank"}
 
 CLAUSE_BREAK_RE = re.compile(r"[,;:–—]|\s-\s|\bbut\b", re.IGNORECASE)
 NEGATION_RE = re.compile(r"\b(not|never|cannot|can't|do not|don't|must not|should not|shouldn't|avoid|no)\b",
@@ -217,6 +218,11 @@ def facts_for_impact(entity: AffectedEntity, incident: NormalizedIncident, impac
                   snapshot=snapshot, reported_on=incident.reported_at.date())
 
 
+def facts_from_text(text: str, reported_on: date) -> FactSheet:
+    """The facts written in one text, e.g. a template draft that a polished draft may not go beyond."""
+    return _sheet(text, snapshot=None, reported_on=reported_on)
+
+
 def facts_for_plan(plan: RecoveryPlan, incident: NormalizedIncident, impact: ImpactResult,
                    snapshot: BusinessSnapshot | None = None) -> FactSheet:
     """The incident plus one plan: its actions, checks, assumptions, cost, and the shortfalls it must cover."""
@@ -243,8 +249,8 @@ def _negated(sentence: str, start: int) -> bool:
 
 
 def _fmt(value: Decimal) -> str:
-    """A number for a problem message, without a needless ".0"."""
-    return str(value.normalize()) if value == value.to_integral() else str(value)
+    """A number for a problem message: "40", not "40.0" or "4E+1"."""
+    return str(int(value)) if value == value.to_integral() else str(value)
 
 
 def find_problems(text: str, facts: FactSheet, context: CheckContext) -> list[str]:

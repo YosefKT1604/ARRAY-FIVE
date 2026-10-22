@@ -104,6 +104,14 @@ def test_business_names(incident, impact, plans, snapshot):
     assert check_plan_text("Ask Bintang Rentals for the chairs.", "RP-001", incident, impact, plans, snapshot) == [
         "unknown name 'Bintang Rentals'"]
     assert check_plan_text("Rentals are quick.", "RP-001", incident, impact, plans, snapshot) == []
+    assert check_plan_text("Hi Bintang Rentals, please help.", "RP-001", incident, impact, plans, snapshot) == [
+        "unknown name 'Bintang Rentals'"]
+
+
+def test_number_message_is_plain(incident, impact, plans):
+    """Problem messages write whole numbers plainly ("90", not "9E+1")."""
+    assert check_plan_text("Cahaya sends 90 extra chairs.", "RP-001", incident, impact, plans) == [
+        "number 90 not in the data"]
 
 
 # --- Status rules ----------------------------------------------------------------------------------
