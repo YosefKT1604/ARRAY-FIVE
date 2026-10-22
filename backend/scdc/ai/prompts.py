@@ -1,7 +1,9 @@
 """Instructions (prompts) for the AI model, and the functions that build each model request.
 
-Only the message and the report date are sent for extraction: no business records. The message is
+Extraction: only the message and the report date are sent, no business records. The message is
 placed in a labelled JSON field so it stays separate from our instructions (it is data, not orders).
+
+Explanation: only the facts the explanation may use are sent (built by `explanation.py`).
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ import json
 from datetime import date
 
 from .adapter import ModelRequest
-from .schemas import RawExtraction
+from .schemas import RawExplanation, RawExtraction
 
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
@@ -49,4 +51,35 @@ def build_extraction_request(message: str, reported_on: date) -> ModelRequest:
         response_schema=RawExtraction.model_json_schema(),
         fixture_key=message.strip(),
         max_output_tokens=600,
+    )
+
+
+EXPLANATION_SYSTEM = """\
+You explain a supply disruption to the owner of a small business, using only the FACTS given as JSON.
+Answer with ONE JSON object that matches the schema, and nothing else.
+
+Rules:
+1. Use only the facts. Do not add any number, date, amount, record, name or cause that is not in FACTS.
+2. Short, plain English for a busy owner. Keep record IDs (J-01, RP-002) where you mention a record.
+3. summary: 2-3 sentences: what happened, what it affects, and which plans are feasible.
+4. impact_explanations: one item per affected entity, same entity_id; say why it is affected. Do not start with
+   its status; that is added automatically.
+5. plan_comparisons: one item per plan, same plan_id. Write exactly one benefit per key in benefit_keys and one
+   limitation per key in limitation_keys, with that key as "source".
+6. validation_status is final. Never call a plan feasible, recommended, safe or ready to approve unless its status
+   is "feasible". Never suggest approving any other plan.
+7. Never say anything is guaranteed or risk-free. Keep every limitation: shorten wording, not meaning.
+8. Do not write missing confirmations or next steps; they are added automatically.
+"""
+
+
+def build_explanation_request(facts: dict, fixture_key: str) -> ModelRequest:
+    """Build the Module B request: the FACTS (JSON) the explanation may use, and the reply schema."""
+    return ModelRequest(
+        task="explain",
+        system=EXPLANATION_SYSTEM,
+        user=json.dumps({"FACTS": facts}, ensure_ascii=False, default=str),
+        response_schema=RawExplanation.model_json_schema(),
+        fixture_key=fixture_key,
+        max_output_tokens=1500,
     )
