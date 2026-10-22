@@ -45,6 +45,7 @@ def test_generate_plans_twice_returns_409(client):
 
     response = client.post("/api/v1/disruptions/D-001/recovery-plans")
     assert response.status_code == 409
+    assert response.json()["code"] == "INVALID_STATE_TRANSITION"
 
 def test_get_one_plan(client):
     report_and_analyze(client)
@@ -60,3 +61,4 @@ def test_get_one_plan(client):
 def test_get_unknown_plan_returns_404(client):
     response = client.get("/api/v1/recovery-plans/RP-999")
     assert response.status_code == 404
+    assert response.json()["code"] == "NOT_FOUND"

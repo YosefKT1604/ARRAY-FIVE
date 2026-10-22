@@ -35,6 +35,7 @@ def test_staff_cannot_approve(client):
 
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=STAFF)
     assert response.status_code == 403
+    assert response.json()["code"] == "FORBIDDEN"
 
 def test_approve_without_user_returns_401(client):
     prepare_plans(client)
@@ -47,12 +48,14 @@ def test_infeasible_plan_cannot_be_approved(client):
 
     response = client.post("/api/v1/recovery-plans/RP-002/approve", json=VERSION_1, headers=OWNER)
     assert response.status_code == 409
+    assert response.json()["code"] == "PLAN_INFEASIBLE"
 
 def test_wrong_version_returns_409(client):
     prepare_plans(client)
 
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json={"plan_version": 2}, headers=OWNER)
     assert response.status_code == 409
+    assert response.json()["code"] == "STALE_PLAN_VERSION"
 
 def test_owner_rejects_plan(client):
     prepare_plans(client)
@@ -69,3 +72,4 @@ def test_plan_cannot_be_decided_twice(client):
 
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
     assert response.status_code == 409
+    assert response.json()["code"] == "INVALID_STATE_TRANSITION"

@@ -7,6 +7,7 @@ from app.schemas.disruption import DisruptionCreate, DisruptionCreated, Disrupti
 from app.schemas.recovery_plan import RecoveryPlanList
 from app.services.disruption import create_disruption, list_disruptions, get_disruption, analyze_disruption
 from app.services.recovery_plan import create_recovery_plans, list_recovery_plans
+from app.errors import ErrorCode, ApiError
 from contracts import DisruptionStatus, ImpactResult
 
 router = APIRouter(prefix="/disruptions", tags=["Disruptions"])
@@ -37,7 +38,7 @@ def get_disruption_or_404(db: Session, disruption_id: str) -> Disruption:
 def analyze(db: DbSession, disruption_id: str) -> ImpactResult:
     disruption = get_disruption_or_404(db, disruption_id)
     if disruption.status == DisruptionStatus.NEEDS_CLARIFICATION:
-        raise HTTPException(status_code=409, detail="Disruption needs clarification before it can be analyzed")
+        raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION, detail="Disruption needs clarification before it can be analyzed")
     return analyze_disruption(db, disruption)
 
 @router.get("/{disruption_id}/impact", response_model=ImpactResult)
@@ -51,7 +52,7 @@ def get_impact(disruption_id: str, db: DbSession) -> ImpactResult:
 def generate_recovery_plans(disruption_id: str, db: DbSession) -> RecoveryPlanList:
     disruption = get_disruption_or_404(db, disruption_id)
     if disruption.status != DisruptionStatus.ANALYZED:
-        raise HTTPException(status_code=409, detail=f"Plans need an analyzed disruption; {disruption_id} is {disruption.status}")
+        raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION, detail=f"Plans need an analyzed disruption; {disruption_id} is {disruption.status}")
     return RecoveryPlanList(items=create_recovery_plans(db, disruption))
 
 @router.get("/{disruption_id}/recovery-plans", response_model=RecoveryPlanList)

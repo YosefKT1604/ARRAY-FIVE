@@ -8,6 +8,7 @@ from app.services.approval import record_decision
 from app.services.identity import CurrentUser, CurrentUserDep
 from app.services.permissions import can_decide
 from app.services.recovery_plan import get_recovery_plan, to_contract
+from app.errors import ApiError, ErrorCode
 from contracts import Decision, PlanStatus, RecoveryPlan, ValidationStatus
 
 router = APIRouter(prefix="/recovery-plans", tags=["Recovery Plans"])
@@ -23,9 +24,9 @@ def check_can_decide(record: RecoveryPlanRecord, user: CurrentUser, data: Decisi
         raise HTTPException(status_code=403, detail=f"{user.id} ({user.role}) may not approve or reject plans")
     plan = to_contract(record)
     if data.plan_version != plan.version:
-        raise HTTPException(status_code=409, detail=f"Plan {plan.id} is at version {plan.version}, not {data.plan_version}")
+        raise ApiError(status_code=409, code=ErrorCode.STALE_PLAN_VERSION, detail=f"Plan {plan.id} is at version {plan.version}, not {data.plan_version}")
     if plan.status != PlanStatus.PROPOSED:
-        raise HTTPException(status_code=409, detail=f"Plan {plan.id} is already {plan.status}")
+        raise ApiError(status_code=409, code= ErrorCode.INVALID_STATE_TRANSITION, detail=f"Plan {plan.id} is already {plan.status}")
     return plan
 
 @router.get("/{plan_id}", response_model=RecoveryPlan)
@@ -37,7 +38,7 @@ def approve_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: 
     record = get_plan_or_404(db, plan_id)
     plan = check_can_decide(record, user, data)
     if plan.validation is None or plan.validation.status == ValidationStatus.INFEASIBLE:
-        raise HTTPException(status_code=409, detail=f"Plan {plan_id} is infeasible and cannot be approved")
+        raise ApiError(status_code=409, code=ErrorCode.PLAN_INFEASIBLE, detail=f"Plan {plan_id} is infeasible and cannot be approved")
     approval = record_decision(db, record, user.id, Decision.APPROVED, data)
     return ApprovalOut.model_validate(approval)
 
