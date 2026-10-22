@@ -63,3 +63,18 @@ def test_decided_disruption_can_be_reported_again(client):
 
     response = client.post("/api/v1/disruptions", json=FORM)
     assert response.status_code == 201
+
+
+def test_missing_material_field_needs_clarification(client):
+    response = client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": None})
+    assert response.status_code == 201
+    body = response.json()
+    assert body["disruption"]["status"] == "needs_clarification"
+    assert [f["field"] for f in body["incident"]["unresolved_fields"]] == ["quantity_affected"]
+
+def test_needs_clarification_cannot_be_analyzed(client):
+    client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": None})
+
+    response = client.post("/api/v1/disruptions/D-001/analyze")
+    assert response.status_code == 409
+    assert response.json()["code"] == "INVALID_STATE_TRANSITION"

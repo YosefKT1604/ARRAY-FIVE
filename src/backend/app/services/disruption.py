@@ -8,19 +8,31 @@ from app.schemas.disruption import DisruptionCreate
 from app.services.activity_log import log_activity
 from app.services.impact import analyze_impact
 from app.services.snapshot import build_snapshot
-from contracts import NormalizedIncident, DisruptionStatus, ImpactResult
-from contracts.enums import ActivityType
+from contracts import NormalizedIncident, DisruptionStatus, ImpactResult, UnresolvedField
+from contracts.enums import ActivityType, UnresolvedReason
 
 
 def next_disruption_id(db: Session) -> str:
     count = db.scalar(select(func.count()).select_from(Disruption))
     return f"D-{count + 1:03d}"
 
+# Fields the impact analysis cannot work without
+MATERIAL_FIELDS = ["supplier_id", "resource_id", "quantity_affected", "new_arrival_date"]
+
+def missing_material_fields(data: DisruptionCreate) -> list[UnresolvedField]:
+    return [
+        UnresolvedField(field=field, reason=UnresolvedReason.MISSING)
+        for field in MATERIAL_FIELDS
+        if getattr(data, field) is None
+    ]
+
 
 def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
+    unresolved = missing_material_fields(data)
     incident = NormalizedIncident(
         id=next_disruption_id(db),
         reported_at=datetime.now(UTC),
+        unresolved_fields=unresolved,
         **data.model_dump(exclude={"raw_message", "client_request_id"}),
     )
     disruption = Disruption(
@@ -31,7 +43,7 @@ def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
         description=incident.description,
         reported_at=incident.reported_at,
         reported_by=None,
-        status=DisruptionStatus.RECEIVED,
+        status=DisruptionStatus.NEEDS_CLARIFICATION if unresolved else DisruptionStatus.RECEIVED,
         incident=incident.model_dump(mode="json"),
         severity=None,
     )

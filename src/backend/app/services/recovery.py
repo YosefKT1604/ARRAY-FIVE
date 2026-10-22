@@ -6,7 +6,7 @@ from contracts import NormalizedIncident, ImpactResult, BusinessSnapshot, Recove
 
 DEMO_PLANS = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "expected_plans.json"
 
-def generate_plans(incident: NormalizedIncident, snapshot: BusinessSnapshot,impact: ImpactResult) -> list[RecoveryPlan]:
+def generate_plans(incident: NormalizedIncident, snapshot: BusinessSnapshot, impact: ImpactResult) -> list[RecoveryPlan]:
     data = json.loads(DEMO_PLANS.read_text(encoding="utf-8"))
     return [RecoveryPlan.model_validate({**plan, "disruption_id": incident.id}) for plan in data["plans"]]
 
