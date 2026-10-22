@@ -1,5 +1,5 @@
-from http import HTTPStatus
 from enum import StrEnum
+from http import HTTPStatus
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -61,6 +61,6 @@ def register_error_handlers(app: FastAPI) -> None:
             detail="Request validation failed.",
             instance=request.url.path,
             errors=[{"loc": error["loc"], "msg": error["msg"], "type": error["type"]} for error in exc.errors()],
-            code=ErrorCode.VALIDATION_ERROR
+            code=ErrorCode.VALIDATION_ERROR,
         )
         return problem_response(problem)

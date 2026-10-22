@@ -21,7 +21,7 @@ def load_demo_users() -> dict[str, CurrentUser]:
 def get_current_user(x_user_id: Annotated[str | None, Header()] = None) -> CurrentUser:
     user = load_demo_users().get(x_user_id)
     if user is None:
-        raise HTTPException(status_code=401, detail="Missing or unknown X-user-id header")
+        raise HTTPException(status_code=401, detail="Missing or unknown X-User-Id header")
     return user
 
 CurrentUserDep = Annotated[CurrentUser, Depends(get_current_user)]

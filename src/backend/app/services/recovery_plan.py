@@ -9,7 +9,6 @@ from app.services.snapshot import build_snapshot
 from contracts import RecoveryPlan, DisruptionStatus, ImpactResult, NormalizedIncident
 from contracts.enums import ActivityType
 
-
 def to_contract(record: RecoveryPlanRecord) -> RecoveryPlan:
     return RecoveryPlan.model_validate({**record.plan, "status": record.status})
 

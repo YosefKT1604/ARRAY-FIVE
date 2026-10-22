@@ -11,7 +11,6 @@ from app.services.snapshot import build_snapshot
 from contracts import NormalizedIncident, DisruptionStatus, ImpactResult, UnresolvedField
 from contracts.enums import ActivityType, UnresolvedReason
 
-
 def next_disruption_id(db: Session) -> str:
     count = db.scalar(select(func.count()).select_from(Disruption))
     return f"D-{count + 1:03d}"
@@ -25,7 +24,6 @@ def missing_material_fields(data: DisruptionCreate) -> list[UnresolvedField]:
         for field in MATERIAL_FIELDS
         if getattr(data, field) is None
     ]
-
 
 def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
     unresolved = missing_material_fields(data)
@@ -52,8 +50,6 @@ def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
     db.commit()
     return disruption
 
-CLOSED_STATUSES = [DisruptionStatus.CLOSED, DisruptionStatus.DECIDED]
-
 def list_disruptions(db: Session) -> list[Disruption]:
     return list(db.scalars(select(Disruption).order_by(Disruption.id)))
 
@@ -69,6 +65,8 @@ def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
     log_activity(db, disruption.id, ActivityType.ANALYSIS_COMPLETED, details={"affected_count": len(impact.affected_entities)})
     db.commit()
     return impact
+
+CLOSED_STATUSES = [DisruptionStatus.CLOSED, DisruptionStatus.DECIDED]
 
 def find_open_duplicate(db: Session, data: DisruptionCreate) -> Disruption | None:
     if data.delivery_id is None or data.new_arrival_date is None:

@@ -1,19 +1,26 @@
 from fastapi import APIRouter, HTTPException
-
 from sqlalchemy.orm import Session
+
 from app.dependencies import DbSession
+from app.errors import ApiError, ErrorCode
 from app.models.disruption import Disruption
 from app.schemas.activity_log import ActivityLogList
 from app.schemas.disruption import DisruptionCreate, DisruptionCreated, DisruptionOut, DisruptionList
 from app.schemas.recovery_plan import RecoveryPlanList
 from app.services.activity_log import list_activity
-from app.services.disruption import create_disruption, list_disruptions, get_disruption, analyze_disruption, \
-    find_open_duplicate
+from app.services.disruption import (
+    analyze_disruption, create_disruption, find_open_duplicate, get_disruption, list_disruptions,
+)
 from app.services.recovery_plan import create_recovery_plans, list_recovery_plans
-from app.errors import ErrorCode, ApiError
 from contracts import DisruptionStatus, ImpactResult
 
-router = APIRouter(prefix="/disruptions", tags=["Disruptions"])
+router = APIRouter(prefix="/disruptions", tags=["disruptions"])
+
+def get_disruption_or_404(db: Session, disruption_id: str) -> Disruption:
+    disruption = get_disruption(db, disruption_id)
+    if disruption is None:
+        raise HTTPException(status_code=404, detail=f"Disruption {disruption_id} not found")
+    return disruption
 
 @router.post("", status_code=201, response_model=DisruptionCreated)
 def report_disruption(data: DisruptionCreate, db: DbSession) -> DisruptionCreated:
@@ -31,16 +38,7 @@ def get_disruptions(db: DbSession) -> DisruptionList:
 
 @router.get("/{disruption_id}", response_model=DisruptionOut)
 def get_disruption_by_id(db: DbSession, disruption_id: str) -> DisruptionOut:
-    disruption = get_disruption(db, disruption_id)
-    if disruption is None:
-        raise HTTPException(status_code=404, detail="Disruption not found")
-    return DisruptionOut.model_validate(disruption)
-
-def get_disruption_or_404(db: Session, disruption_id: str) -> Disruption:
-    disruption = get_disruption(db, disruption_id)
-    if disruption is None:
-        raise HTTPException(status_code=404, detail=f"Disruption {disruption_id} not found")
-    return disruption
+    return DisruptionOut.model_validate(get_disruption_or_404(db, disruption_id))
 
 @router.post("/{disruption_id}/analyze", response_model=ImpactResult)
 def analyze(db: DbSession, disruption_id: str) -> ImpactResult:

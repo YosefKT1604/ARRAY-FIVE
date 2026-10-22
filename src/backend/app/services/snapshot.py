@@ -25,7 +25,8 @@ def to_contracts(db: Session, model: type[Base], contract: type[contracts.Contra
     return [contract.model_validate(row) for row in db.scalars(select(model).order_by(model.id))]
 
 def build_snapshot(db: Session, incident: NormalizedIncident) -> BusinessSnapshot:
-    return BusinessSnapshot(as_of=datetime.now(UTC),
+    return BusinessSnapshot(
+        as_of=datetime.now(UTC),
         business=load_business(),
         suppliers=to_contracts(db, Supplier, contracts.Supplier),
         supplier_offerings=to_contracts(db, SupplierOffering, contracts.SupplierOffering),
@@ -35,4 +36,3 @@ def build_snapshot(db: Session, incident: NormalizedIncident) -> BusinessSnapsho
         commitments=to_contracts(db, Commitment, contracts.Commitment),
         dependencies=to_contracts(db, Dependency, contracts.Dependency),
     )
-

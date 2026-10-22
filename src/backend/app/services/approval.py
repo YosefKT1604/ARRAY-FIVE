@@ -23,7 +23,6 @@ ACTIVITY_TYPE = {
     Decision.MORE_INFO_REQUESTED: ActivityType.INFO_REQUESTED,
 }
 
-
 def next_approval_id(db: Session):
     count = db.scalar(select(func.count()).select_from(Approval))
     return f"AP-{count + 1:03d}"

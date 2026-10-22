@@ -12,7 +12,7 @@ class UTCDateTime(TypeDecorator):
     impl = DateTime
     cache_ok = True
 
-    def process_bind_param(self, value, dialect):
+    def process_bind_param(self, value: datetime | None, dialect) -> datetime | None:
         if value is not None and value.tzinfo is not None:
             return value.astimezone(UTC).replace(tzinfo=None)
         return value

@@ -1,23 +1,24 @@
 import json
-from datetime import datetime, date, UTC
+from datetime import datetime, date
 from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select, func
-
-from app.models.approval import Approval
-from app.models.disruption import Disruption
-from app.models.recovery_plan import RecoveryPlanRecord
-from app.models.activity_log import ActivityLog
 from sqlalchemy.orm import Session
 
 from app.db.database import engine, Base, SessionLocal
+from app.models.commitment import Commitment
 from app.models.delivery import Delivery
 from app.models.dependency import Dependency
 from app.models.job import Job
 from app.models.resource import Resource
 from app.models.supplier import Supplier, SupplierOffering
-from app.models.commitment import Commitment
+
+# Not seeded, but imported so create_all() also builds their tables.
+from app.models.activity_log import ActivityLog  # noqa: F401
+from app.models.approval import Approval  # noqa: F401
+from app.models.disruption import Disruption  # noqa: F401
+from app.models.recovery_plan import RecoveryPlanRecord  # noqa: F401
 
 SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.json"
 
@@ -35,7 +36,7 @@ DATE_FIELDS = {"expected_date", "event_date", "deadline", "required_by", "requir
 TIMESTAMP_FIELDS = {"verified_at", "confirmed_at"}
 
 def parse_timestamp(value: str | None) -> datetime | None:
-    return datetime.fromisoformat(value).astimezone(UTC) if value else None
+    return datetime.fromisoformat(value) if value else None
 
 def parse_row(row: dict[str, Any]) -> dict[str, Any]:
     parsed = dict(row)

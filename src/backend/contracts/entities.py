@@ -4,8 +4,6 @@ from typing import Any, Literal
 from contracts.base import ContractModel, Money, Quantity
 from contracts.enums import DeliveryStatus, DependencyType, EntityType, Priority
 
-# Business records (CONTRACTS.md §4). The API returns the them.
-
 class Business(ContractModel):
     id: str
     name: str
