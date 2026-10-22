@@ -135,6 +135,13 @@ def test_summary_sentence_about_one_plan(incident, impact, plans):
     assert check_summary("RP-001 is feasible.", incident, impact, plans) == []
 
 
+def test_negation_must_be_in_the_same_clause(incident, impact, plans):
+    """'not' before a ':' or ',' / 'but' does not negate what follows; a nearby 'not' still does."""
+    assert check_summary("Do not wait: RP-003 is the best option.", incident, impact, plans) != []
+    assert check_plan_text("Not cheap, but feasible.", "RP-002", incident, impact, plans) != []
+    assert check_plan_text("It is not a good option.", "RP-002", incident, impact, plans) == []
+
+
 def test_over_claims(incident, impact, plans):
     """'guaranteed' is never allowed; 'not guaranteed' is fine."""
     assert check_plan_text("Delivery is guaranteed.", "RP-001", incident, impact, plans) == ["over-claim 'guaranteed'"]

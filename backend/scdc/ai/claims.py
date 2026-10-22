@@ -21,6 +21,8 @@ What counts as a claim, and the check:
     over-claims                        "guaranteed", "definitely", "no risk"... are never allowed
     impact contradictions              an affected record may not be called "not affected"
 
+A negation counts only in the same clause and within 4 words before the word it negates (fixed in 3e).
+
 Known limitation: invented names without a business word ("Mr Tan") are not detected.
 """
 
@@ -63,6 +65,7 @@ LEADING_WORDS = {"the", "a", "an", "this", "that", "our", "your", "their", "both
                  "and", "or", "by", "via", "use", "order", "rent", "call", "email", "tell", "unlike", "while",
                  "but", "if", "since", "because", "as", "for", "to", "at", "in", "on", "only"}
 
+CLAUSE_BREAK_RE = re.compile(r"[,;:–—]|\s-\s|\bbut\b", re.IGNORECASE)
 NEGATION_RE = re.compile(r"\b(not|never|cannot|can't|do not|don't|must not|should not|shouldn't|avoid|no)\b",
                          re.IGNORECASE)
 FEASIBLE_RE = re.compile(
@@ -230,8 +233,13 @@ def split_sentences(text: str) -> list[str]:
 
 
 def _negated(sentence: str, start: int) -> bool:
-    """Is there a negation ("not", "do not", "avoid"...) shortly before this position?"""
-    return NEGATION_RE.search(sentence[max(0, start - 25):start]) is not None
+    """Is there a negation ("not", "do not", "avoid"...) in the same clause, within 4 words before this position?
+
+    A clause ends at , ; : or a dash, or the word "but": in "Do not wait: RP-003 is the best option",
+    the "not" belongs to "wait", so "best option" is not negated.
+    """
+    clause = CLAUSE_BREAK_RE.split(sentence[:start])[-1]
+    return NEGATION_RE.search(" ".join(clause.split()[-4:])) is not None
 
 
 def _fmt(value: Decimal) -> str:
