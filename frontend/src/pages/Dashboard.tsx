@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getDashboard } from '../api/endpoints'
 import { DisruptionStatusBadge, StatusBadge } from '../components/StatusBadge'
-import { MoneyText } from '../components/MoneyText'
+import { PlanCost } from '../components/PlanCost'
 import { EmptyState, ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, card } from '../components/ui'
 import { formatDate, relativeDay, relativeTime } from '../lib/format'
@@ -59,7 +59,7 @@ function DecisionCard({ item }: { item: PendingDecision }) {
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
             {recommended.validation && <StatusBadge status={recommended.validation.status} />}
             <span>
-              Cost: <MoneyText value={recommended.estimated_cost} />
+              Cost: <PlanCost plan={recommended} />
             </span>
           </p>
         </div>

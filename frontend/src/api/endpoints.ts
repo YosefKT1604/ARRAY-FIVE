@@ -45,17 +45,20 @@ export const approvePlan = (id: string, body: DecisionRequest) =>
 export const rejectPlan = (id: string, body: DecisionRequest) =>
   request<Approval>('POST', `/recovery-plans/${id}/reject`, body)
 
+export const getActivityLog = (id: string) => request<Items<ActivityLogEntry>>('GET', `/disruptions/${id}/activity-log`)
+export const requestInfo = (id: string, body: DecisionRequest) =>
+  request<Approval>('POST', `/recovery-plans/${id}/request-info`, body)
+
 // ---- Not built yet: answered by MSW in hybrid mode (see mocks/missing-endpoints.ts) ----
 export const extractDisruption = (message: string, from_contact?: string) =>
   request<ExtractionResult>('POST', '/disruptions/extract', { message, from_contact: from_contact || null })
 export const getExplanation = (id: string) => request<Explanation>('GET', `/disruptions/${id}/explanation`)
 export const editPlan = (id: string, body: PlanEditRequest) => request<RecoveryPlan>('PUT', `/recovery-plans/${id}`, body)
 export const revalidatePlan = (id: string) => request<RecoveryPlan>('POST', `/recovery-plans/${id}/revalidate`)
-export const requestInfo = (id: string, body: DecisionRequest) =>
-  request<Approval>('POST', `/recovery-plans/${id}/request-info`, body)
 export const createDrafts = (planId: string) => request<Items<DraftMessage>>('POST', `/recovery-plans/${planId}/drafts`)
 export const approveDraft = (id: string) => request<DraftMessage>('POST', `/drafts/${id}/approve`)
-export const getActivityLog = (id: string) => request<Items<ActivityLogEntry>>('GET', `/disruptions/${id}/activity-log`)
+/** Demo-only (not in CONTRACTS.md): drop a mock edit and return to the plan the backend knows. */
+export const discardPlanEdit = (id: string) => request<RecoveryPlan>('DELETE', `/recovery-plans/${id}/demo-edit`)
 
 /** GET /dashboard does not exist on the backend, so the home screen is composed here. */
 export async function getDashboard(): Promise<Dashboard> {

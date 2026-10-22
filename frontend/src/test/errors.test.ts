@@ -10,34 +10,49 @@ describe('parseErrorBody', () => {
     expect(e.requestId).toBe('req-1')
   })
 
-  it('reads the real backend Problem Details shape and maps 422 fields', () => {
+  it('uses the code field the real backend sends (Problem Details + code)', () => {
+    const e = parseErrorBody(409, {
+      title: 'Conflict',
+      status: 409,
+      detail: 'Plan RP-001 is at version 2, not 1',
+      code: 'STALE_PLAN_VERSION',
+    })
+    expect(e.code).toBe('STALE_PLAN_VERSION')
+    expect(e.isStale).toBe(true)
+  })
+
+  it('maps 422 field errors', () => {
     const e = parseErrorBody(422, {
-      title: 'Unprocessable Entity',
+      title: 'Unprocessable Content',
       status: 422,
       detail: 'Validation failed',
+      code: 'VALIDATION_ERROR',
       errors: [{ loc: ['body', 'quantity_affected'], msg: 'must be >= 1', type: 'x' }],
     })
-    expect(e.code).toBe('VALIDATION_ERROR')
     expect(e.fieldErrors).toEqual({ quantity_affected: 'must be >= 1' })
   })
 
-  it('infers codes from the backend detail text when none is sent', () => {
-    expect(parseErrorBody(409, { detail: 'Plan RP-001 is at version 2, not 1' }).code).toBe('STALE_PLAN_VERSION')
-    expect(parseErrorBody(409, { detail: 'Plan RP-002 is infeasible and cannot be approved' }).code).toBe(
-      'PLAN_INFEASIBLE',
-    )
-    expect(parseErrorBody(403, { detail: 'U-02 (staff) may not approve or reject plans' }).code).toBe('FORBIDDEN')
-  })
-
-  it('recognises an already-decided plan', () => {
-    const e = parseErrorBody(409, { detail: 'Plan RP-001 is already approved' })
-    expect(e.code).toBe('PLAN_ALREADY_DECIDED')
-    expect(e.userMessage).toMatch(/already decided/)
-  })
-
-  it('shows the backend text in plain words when a 409 code cannot be inferred', () => {
+  it('does not guess codes from detail text; a 409 without a code shows the backend words', () => {
     const e = parseErrorBody(409, { detail: 'Something odd happened with the order' })
     expect(e.code).toBeUndefined()
     expect(e.userMessage).toBe('Something odd happened with the order.')
+  })
+
+  it('explains INVALID_STATE_TRANSITION for an already-decided plan in plain words', () => {
+    const e = parseErrorBody(409, { detail: 'Plan RP-001 is already approved', code: 'INVALID_STATE_TRANSITION' })
+    expect(e.userMessage).toBe('Someone has already approved this plan. Reload to see what happened.')
+  })
+
+  it('shows the backend text for other INVALID_STATE_TRANSITION cases', () => {
+    const e = parseErrorBody(409, {
+      detail: 'Disruption needs clarification before it can be analyzed',
+      code: 'INVALID_STATE_TRANSITION',
+    })
+    expect(e.userMessage).toBe('Disruption needs clarification before it can be analyzed.')
+  })
+
+  it('falls back to the HTTP status when no code is sent', () => {
+    expect(parseErrorBody(403, { detail: 'nope' }).code).toBe('FORBIDDEN')
+    expect(parseErrorBody(401, { detail: 'nope' }).code).toBe('UNAUTHORIZED')
   })
 })

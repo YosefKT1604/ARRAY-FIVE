@@ -81,14 +81,8 @@ export interface DraftMessage {
   generated_by: string
 }
 
-export interface ActivityLogEntry {
-  id: string
-  disruption_id: string
-  actor_id: string
-  activity_type: string
-  details: Record<string, unknown>
-  created_at: string
-}
+export type ActivityLogEntry = S['ActivityLogOut']
+export type ActivityType = S['ActivityType']
 
 export interface PlanEditRequest {
   base_version: number
@@ -113,15 +107,15 @@ export interface Dashboard {
 
 // ---- Errors ----
 
+/** The backend's ErrorCode enum (app/errors.py), matching CONTRACTS.md section 8 (401 is UNAUTHORIZED). */
 export type ErrorCode =
   | 'BAD_REQUEST'
-  | 'UNAUTHENTICATED'
+  | 'UNAUTHORIZED'
   | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'DUPLICATE_DISRUPTION'
   | 'STALE_PLAN_VERSION'
   | 'PLAN_INFEASIBLE'
   | 'INVALID_STATE_TRANSITION'
-  | 'PLAN_ALREADY_DECIDED' // not in CONTRACTS.md; inferred from the backend's 409 text
   | 'VALIDATION_ERROR'
   | 'INTERNAL_ERROR'

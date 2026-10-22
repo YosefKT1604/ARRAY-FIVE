@@ -50,10 +50,41 @@ export function openQuestions(plan: RecoveryPlan): string[] {
   return [...new Set([...(plan.validation?.unresolved_assumptions ?? []), ...plan.assumptions])]
 }
 
-/** Everything still unconfirmed on a plan: open assumptions plus the detail of unresolved checks. */
+const normalise = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/**
+ * The open questions for the owner, each once. These are the plan's assumptions (the things that
+ * must be true). The explanations of unresolved checks live in "How it was checked", so they are
+ * only used here when a plan lists no assumptions at all.
+ */
 export function stillToConfirm(plan: RecoveryPlan): string[] {
-  return [...new Set([...openQuestions(plan), ...unresolvedChecks(plan).map((c) => c.detail)])]
+  const questions = openQuestions(plan)
+  const source = questions.length > 0 ? questions : unresolvedChecks(plan).map((c) => c.detail)
+  const seen = new Set<string>()
+  return source.filter((q) => {
+    const key = normalise(q)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
+
+const DATE_WORDS = /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/g
+
+/**
+ * Benefits must never include a fact that makes a check fail (for example "Arrives Fri 23 Oct"
+ * on a plan that fails because it arrives too late). Works on humanized text.
+ */
+export function safeBenefits(benefits: string[], plan: RecoveryPlan, humanize: (t: string) => string): string[] {
+  const failingText = failingChecks(plan).map((c) => humanize(c.detail))
+  return benefits.filter((b) => {
+    const dates = humanize(b).match(DATE_WORDS) ?? []
+    return !dates.some((d) => failingText.some((f) => f.includes(d)))
+  })
+}
+
+/** A plan edited by the demo-only mock (not by the backend). */
+export const isDemoEdit = (plan: RecoveryPlan): boolean => plan.created_by === 'user_edit'
 
 type Names = { label: (id: string, hint?: 'supplier' | 'resource' | 'job') => string }
 

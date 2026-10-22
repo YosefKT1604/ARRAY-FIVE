@@ -193,6 +193,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/disruptions/{disruption_id}/activity-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Activity Log */
+        get: operations["get_activity_log_api_v1_disruptions__disruption_id__activity_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recovery-plans/{plan_id}": {
         parameters: {
             query?: never;
@@ -244,6 +261,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recovery-plans/{plan_id}/request-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request Info */
+        post: operations["request_info_api_v1_recovery_plans__plan_id__request_info_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -258,6 +292,37 @@ export interface components {
          * @enum {string}
          */
         ActionType: "use_spare_inventory" | "source_alternative_supplier" | "reallocate_resource" | "reschedule_job" | "split_allocation" | "contact_supplier";
+        /** ActivityLogList */
+        ActivityLogList: {
+            /** Items */
+            items: components["schemas"]["ActivityLogOut"][];
+        };
+        /** ActivityLogOut */
+        ActivityLogOut: {
+            /** Id */
+            id: string;
+            /** Disruption Id */
+            disruption_id: string;
+            /** Plan Id */
+            plan_id: string | null;
+            /** Actor Id */
+            actor_id: string;
+            activity_type: components["schemas"]["ActivityType"];
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * ActivityType
+         * @enum {string}
+         */
+        ActivityType: "disruption_reported" | "disruption_extracted" | "disruption_validated" | "analysis_completed" | "plans_generated" | "plan_edited" | "plan_revalidated" | "plan_approved" | "plan_rejected" | "info_requested" | "approval_denied" | "draft_created" | "draft_approved" | "action_completed";
         /** AffectedEntity */
         AffectedEntity: {
             entity_type: components["schemas"]["EntityType"];
@@ -1140,6 +1205,37 @@ export interface operations {
             };
         };
     };
+    get_activity_log_api_v1_disruptions__disruption_id__activity_log_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                disruption_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityLogList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_recovery_plan_by_id_api_v1_recovery_plans__plan_id__get: {
         parameters: {
             query?: never;
@@ -1209,6 +1305,43 @@ export interface operations {
         };
     };
     reject_plan_api_v1_recovery_plans__plan_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-user-id"?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_info_api_v1_recovery_plans__plan_id__request_info_post: {
         parameters: {
             query?: never;
             header?: {

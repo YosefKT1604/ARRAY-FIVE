@@ -23,6 +23,19 @@ function isScriptedEdit(base: RecoveryPlan, edit: PlanEditRequest): boolean {
   )
 }
 
+/** Keep the title honest after an edit: swap each changed quantity in the summary (20 -> 10). */
+function retitle(summary: string, before: RecoveryPlan['actions'], after: RecoveryPlan['actions']): string {
+  let text = summary
+  before.forEach((a, i) => {
+    const was = (a.parameters as Params).quantity
+    const now = (after[i]?.parameters as Params | undefined)?.quantity
+    if (typeof was === 'number' && typeof now === 'number' && was !== now) {
+      text = text.replace(new RegExp(`(^|[^0-9])${was}([^0-9]|$)`), `$1${now}$2`)
+    }
+  })
+  return text
+}
+
 export function mockEdit(base: RecoveryPlan, edit: PlanEditRequest): RecoveryPlan {
   const version = base.version + 1
   const validated_at = new Date().toISOString()
@@ -48,6 +61,7 @@ export function mockEdit(base: RecoveryPlan, edit: PlanEditRequest): RecoveryPla
   return {
     ...base,
     version,
+    summary: retitle(base.summary, base.actions, edit.actions),
     actions: edit.actions,
     assumptions: edit.assumptions,
     // Cost would have to be recalculated by the backend, so it is unknown here (never RM 0.00).

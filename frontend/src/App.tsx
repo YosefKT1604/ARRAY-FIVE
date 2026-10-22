@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
-import { ComingSoon } from './pages/ComingSoon'
+import { ActivityLog } from './pages/ActivityLog'
+import { Drafts } from './pages/Drafts'
+import { NotFound } from './pages/NotFound'
 import { Dashboard } from './pages/Dashboard'
 import { Impact } from './pages/Impact'
 import { PlanReview } from './pages/PlanReview'
@@ -21,9 +23,9 @@ const router = createBrowserRouter([
       { path: '/disruptions/:id/impact', element: <Impact /> },
       { path: '/disruptions/:id/plans', element: <Plans /> },
       { path: '/plans/:planId', element: <PlanReview /> },
-      { path: '/plans/:planId/drafts', element: <ComingSoon title="Drafts" milestone="M4" /> },
-      { path: '/disruptions/:id/log', element: <ComingSoon title="Activity log" milestone="M4" /> },
-      { path: '*', element: <ComingSoon title="Page not found" milestone="n/a" /> },
+      { path: '/plans/:planId/drafts', element: <Drafts /> },
+      { path: '/disruptions/:id/log', element: <ActivityLog /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ])

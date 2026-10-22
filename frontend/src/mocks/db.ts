@@ -4,8 +4,14 @@ import seed from '../../../fixtures/demo/seed.json'
 import incidentFixture from '../../../fixtures/demo/incident.json'
 import impactFixture from '../../../fixtures/demo/expected_impact.json'
 import plansFixture from '../../../fixtures/demo/expected_plans.json'
+import { API_MODE } from '../config'
+import noFeasibleScenario from './scenarios/no_feasible.json'
+import { getSession } from '../state/session'
 import type {
+  ActivityLogEntry,
+  ActivityType,
   Approval,
+  DraftMessage,
   Disruption,
   DisruptionCreate,
   ImpactResult,
@@ -33,7 +39,11 @@ interface MockState {
   demoPlans: Record<string, RecoveryPlan>
   /** Disruptions decided through a mock approval (hybrid mode patches the real disruption list with these). */
   demoDecided: string[]
-  counters: { disruption: number; plan: number; approval: number }
+  /** Activity entries made by the mock (all of them in mock mode; demo-only ones in hybrid mode). */
+  activity: ActivityLogEntry[]
+  /** Drafts by plan id (mock only: drafting is Person 5's, not built yet). */
+  drafts: Record<string, DraftMessage[]>
+  counters: { disruption: number; plan: number; approval: number; log: number; draft: number }
 }
 
 function fresh(): MockState {
@@ -44,7 +54,9 @@ function fresh(): MockState {
     approvals: [],
     demoPlans: {},
     demoDecided: [],
-    counters: { disruption: 0, plan: 0, approval: 0 },
+    activity: [],
+    drafts: {},
+    counters: { disruption: 0, plan: 0, approval: 0, log: 0, draft: 0 },
   }
 }
 
@@ -54,7 +66,10 @@ const STORAGE_KEY = 'scdc.mockState'
 function restore(): MockState {
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (raw) return { ...fresh(), ...(JSON.parse(raw) as MockState) }
+    if (raw) {
+      const saved = JSON.parse(raw) as MockState
+      return { ...fresh(), ...saved, counters: { ...fresh().counters, ...saved.counters } }
+    }
   } catch {
     /* storage unavailable */
   }
@@ -119,6 +134,7 @@ export function createMockDisruption(body: DisruptionCreate): { disruption: Disr
     severity: null,
   }
   state.disruptions.push(disruption)
+  logMock(id, 'disruption_reported', 'system', null, { type: body.type })
   return { disruption, incident }
 }
 
@@ -129,12 +145,22 @@ export function analyzeMockDisruption(disruption: Disruption): ImpactResult {
   state.impacts[disruption.id] = impact
   disruption.status = 'analyzed'
   disruption.severity = Math.max(...impact.affected_entities.map((e) => e.severity))
+  logMock(disruption.id, 'analysis_completed', 'system', null, { affected_count: impact.affected_entities.length })
   return impact
 }
 
-/** Mirrors the backend stub: fixture plans with fresh IDs (the counter keeps running across disruptions). */
+/** The plan templates for the selected mock scenario (A: main demo from fixtures, B: mock-only "no feasible plan"). */
+function scenarioPlans(): RecoveryPlan[] {
+  if (getSession().scenario !== 'no_feasible') return fixtures.plans
+  return (noFeasibleScenario.plans as Record<string, unknown>[]).map((entry) => {
+    const ref = entry.use_fixture_plan as string | undefined
+    return (ref ? fixtures.plans.find((p) => p.id === ref)! : entry) as unknown as RecoveryPlan
+  })
+}
+
+/** Mirrors the backend stub: scenario plans with fresh IDs (the counter keeps running across disruptions). */
 export function generateMockPlans(disruption: Disruption): RecoveryPlan[] {
-  const plans = clone(fixtures.plans).map((plan) => {
+  const plans = clone(scenarioPlans()).map((plan) => {
     const id = `RP-${pad(++state.counters.plan)}`
     plan.id = id
     plan.disruption_id = disruption.id
@@ -143,7 +169,32 @@ export function generateMockPlans(disruption: Disruption): RecoveryPlan[] {
   })
   state.plans.push(...plans)
   disruption.status = 'plans_ready'
+  logMock(disruption.id, 'plans_generated', 'system', null, { plan_ids: plans.map((p) => p.id) })
   return plans
+}
+
+/** Append to the mock activity log, like the backend's log_activity. */
+export function logMock(
+  disruptionId: string,
+  type: ActivityType,
+  actor: string,
+  planId: string | null,
+  details: Record<string, unknown> = {},
+) {
+  state.activity.push({
+    id: `LOG-${pad(++state.counters.log, 4)}`,
+    disruption_id: disruptionId,
+    plan_id: planId,
+    actor_id: actor,
+    activity_type: type,
+    // In hybrid mode the real log is authoritative; anything the mock adds is flagged as demo-only.
+    details: API_MODE === 'mock' ? details : { ...details, demo_only: true },
+    created_at: new Date().toISOString(),
+  })
+}
+
+export function nextDraftId() {
+  return `DM-${pad(++state.counters.draft)}`
 }
 
 export function nextApprovalId() {

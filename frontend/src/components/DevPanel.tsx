@@ -22,10 +22,11 @@ export function DevPanel() {
             className="mt-1 w-full rounded-lg border border-line bg-paper px-2 py-1.5"
           >
             <option value="main">A: main demo</option>
-            <option value="no_feasible" disabled>
-              B: no feasible option (MOCK-ONLY, coming in M4)
+            <option value="no_feasible">
+              B: no feasible option (MOCK-ONLY)
             </option>
           </select>
+          <span className="mt-1 block text-xs text-muted">Applies to plans generated in mock mode. Reset the mock after switching.</span>
         </label>
 
         <label className="flex items-center gap-2">

@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import { cn } from '../lib/cn'
-import { failingChecks, stillToConfirm } from '../lib/plans'
+import { failingChecks, isDemoEdit, safeBenefits, stillToConfirm } from '../lib/plans'
 import { useNames } from '../lib/useNames'
 import type { PlanComparison, RecoveryPlan } from '../types/contracts'
 import { CheckList } from './CheckList'
-import { MoneyText } from './MoneyText'
+import { PlanCost } from './PlanCost'
 import { PlanStatusBadge, StatusBadge } from './StatusBadge'
 
 function Bullets({ title, items, tone }: { title: string; items: string[]; tone?: string }) {
@@ -37,6 +37,7 @@ export function PlanCard({
   // Anything already shown as a failing check or an open question is not repeated under "Watch out for".
   const shown = new Set([...failing.map((c) => c.detail), ...questions])
   const watchOut = (comparison?.limitations ?? []).filter((l) => !shown.has(l))
+  const benefits = safeBenefits(comparison?.benefits ?? [], plan, names.humanize)
 
   return (
     <li
@@ -48,14 +49,13 @@ export function PlanCard({
     >
       <div className="flex flex-wrap items-center gap-2">
         {recommended && <span className="rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-white">Recommended</span>}
-        {plan.rank != null && <span className="text-xs font-semibold text-muted">Rank {plan.rank}</span>}
         {status ? (
           <StatusBadge status={status} />
         ) : (
           <span className="rounded-full bg-info-bg px-2.5 py-1 text-xs font-semibold">Not checked yet</span>
         )}
         {plan.status !== 'proposed' && <PlanStatusBadge status={plan.status} />}
-        {plan.version > 1 && (
+        {isDemoEdit(plan) && (
           <span className="rounded-full bg-warn-bg px-2.5 py-1 text-xs font-semibold text-warn">
             Version {plan.version}, edited (demo only)
           </span>
@@ -65,11 +65,11 @@ export function PlanCard({
       <div>
         <h3 className="text-lg leading-snug font-semibold">{names.humanize(plan.summary)}</h3>
         <p className="mt-1 text-sm text-muted">
-          Cost: <MoneyText value={plan.estimated_cost} />
+          Cost: <PlanCost plan={plan} />
         </p>
       </div>
 
-      <Bullets title="Good about it" items={comparison?.benefits ?? []} tone="text-ok" />
+      <Bullets title="Good about it" items={benefits} tone="text-ok" />
       <Bullets title="Watch out for" items={watchOut.map(names.humanize)} tone="text-warn" />
 
       {failing.length > 0 && (

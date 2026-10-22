@@ -75,3 +75,9 @@ export function formatDateTime(value: string | null | undefined): string {
     minute: '2-digit',
   }).format(parseTimestamp(value))
 }
+
+/** "11:51 am" in Asia/Kuala_Lumpur (for a real timestamp). */
+export function formatTimeOfDay(value: string | null | undefined): string {
+  if (!value) return 'an unknown time'
+  return new Intl.DateTimeFormat('en-MY', { timeZone: TIME_ZONE, hour: 'numeric', minute: '2-digit' }).format(parseTimestamp(value))
+}

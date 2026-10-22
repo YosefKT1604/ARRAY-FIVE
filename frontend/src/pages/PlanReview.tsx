@@ -2,17 +2,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../api/errors'
-import { approvePlan, editPlan, getExplanation, getPlan, rejectPlan, requestInfo, revalidatePlan } from '../api/endpoints'
+import { approvePlan, discardPlanEdit, editPlan, getActivityLog, getExplanation, getPlan, rejectPlan, requestInfo, revalidatePlan } from '../api/endpoints'
 import { AiBadge } from '../components/AiBadge'
 import { CheckList } from '../components/CheckList'
-import { MoneyText } from '../components/MoneyText'
+import { PlanCost } from '../components/PlanCost'
 import { PlanStatusBadge, StatusBadge } from '../components/StatusBadge'
 import { ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, btnSecondary, card, inputBase } from '../components/ui'
 import { API_MODE } from '../config'
 import { cn } from '../lib/cn'
-import { formatDate, relativeTime } from '../lib/format'
-import { describeAction, failingChecks, stillToConfirm } from '../lib/plans'
+import { actorName } from '../lib/activity'
+import { formatDate, formatTimeOfDay, relativeTime } from '../lib/format'
+import { describeAction, failingChecks, isDemoEdit, safeBenefits, stillToConfirm } from '../lib/plans'
 import { useNames } from '../lib/useNames'
 import { useSession } from '../state/session'
 import { USERS, type RecoveryPlan } from '../types/contracts'
@@ -46,6 +47,11 @@ export function PlanReview() {
     enabled: !!disruptionId,
   })
 
+  const approvedLog = useQuery({
+    queryKey: ['activity', disruptionId],
+    queryFn: () => getActivityLog(disruptionId!),
+    enabled: !!disruptionId && plan?.status === 'approved',
+  })
   const [comment, setComment] = useState('')
   const [commentError, setCommentError] = useState<string | null>(null)
   const [mode, setMode] = useState<'idle' | 'confirm_open' | 'editing'>('idle')
@@ -58,17 +64,18 @@ export function PlanReview() {
     void queryClient.invalidateQueries({ queryKey: ['explanation'] })
     void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     void queryClient.invalidateQueries({ queryKey: ['disruption'] })
+    void queryClient.invalidateQueries({ queryKey: ['activity'] })
   }
 
   const body = () => ({ plan_version: plan!.version, comments: comment.trim() })
-  const done = (message: string) => () => {
+  const done = (message: string | null) => () => {
     setNotice(message)
     setMode('idle')
     setComment('')
     refresh()
   }
 
-  const approve = useMutation({ mutationFn: () => approvePlan(planId, body()), onSuccess: done('Plan approved.') })
+  const approve = useMutation({ mutationFn: () => approvePlan(planId, body()), onSuccess: done(null) })
   const reject = useMutation({ mutationFn: () => rejectPlan(planId, body()), onSuccess: done('Plan rejected.') })
   const askInfo = useMutation({
     mutationFn: () => requestInfo(planId, body()),
@@ -86,6 +93,14 @@ export function PlanReview() {
       queryClient.setQueryData(['plan', planId], result)
       setNotice(`Edited and re-checked (demo only). This is now version ${result.version}.`)
       setMode('idle')
+      refresh()
+    },
+  })
+  const discard = useMutation({
+    mutationFn: () => discardPlanEdit(planId),
+    onSuccess: (result) => {
+      queryClient.setQueryData(['plan', planId], result)
+      setNotice(`Demo edit discarded. Back to version ${result.version}.`)
       refresh()
     },
   })
@@ -109,12 +124,14 @@ export function PlanReview() {
   // Not repeated if already shown as a failing check or an open question.
   const shown = new Set([...failing.map((c) => c.detail), ...questions])
   const watchOut = (comparison?.limitations ?? []).filter((l) => !shown.has(l))
+  const editable = plan.actions.filter((a) => typeof (a.parameters as Record<string, unknown>).quantity === 'number')
   const suppliers = supplierIds(plan).map((id) => names.label(id, 'supplier'))
 
   const isOwner = user.role === 'owner'
   const mayAct = isOwner || session.staffCanTry
-  const proposed = plan.status === 'proposed'
-  const busy = approve.isPending || reject.isPending || askInfo.isPending || edit.isPending
+  const proposed = plan.status === 'proposed' || plan.status === 'more_info_requested'
+  const demoEdit = isDemoEdit(plan)
+  const busy = approve.isPending || reject.isPending || askInfo.isPending || edit.isPending || discard.isPending
 
   // Why the buttons are off (shown in words, never a silent disabled button).
   let blocked: string | null = null
@@ -126,9 +143,11 @@ export function PlanReview() {
       ? `This plan won't work, so it can't be approved.${failing[0] ? ` ${names.humanize(failing[0].detail)}` : ''}`
       : null)
 
-  const lastError = [approve, reject, askInfo, edit, recheck].map((m) => m.error).find(Boolean)
-  const staleError =
-    lastError instanceof ApiError && (lastError.code === 'STALE_PLAN_VERSION' || lastError.code === 'PLAN_ALREADY_DECIDED')
+  const lastError = [approve, reject, askInfo, edit, recheck, discard].map((m) => m.error).find(Boolean)
+  const staleError = lastError instanceof ApiError && lastError.isStale
+  const benefits = safeBenefits(comparison?.benefits ?? [], plan, names.humanize)
+  const approval = approvedLog.data?.items.find((e) => e.plan_id === plan.id && e.activity_type === 'plan_approved')
+  const approver = approval ? actorName(approval.actor_id) : null
 
   function needComment(run: () => void) {
     if (!comment.trim()) {
@@ -139,7 +158,6 @@ export function PlanReview() {
     run()
   }
 
-  const editable = plan.actions.filter((a) => typeof (a.parameters as Record<string, unknown>).quantity === 'number')
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -149,22 +167,43 @@ export function PlanReview() {
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {status && <StatusBadge status={status} />}
-          {plan.rank != null && <span className="text-xs font-semibold text-muted">Rank {plan.rank}</span>}
           <PlanStatusBadge status={plan.status} />
-          {plan.version > 1 && (
+          {demoEdit && (
             <span className="rounded-full bg-warn-bg px-2.5 py-1 text-xs font-semibold text-warn">Version {plan.version}, edited (demo only)</span>
           )}
         </div>
         <h1 className="mt-2 text-3xl leading-tight font-semibold">{names.humanize(plan.summary)}</h1>
         <p className="mt-1 text-muted">
-          Cost: <MoneyText value={plan.estimated_cost} />
+          Cost: <PlanCost plan={plan} />
         </p>
+        {demoEdit && (
+          <p className="mt-1 text-sm font-medium text-warn">
+            Edited from the original plan (demo only): {editable.map((a) => names.humanize(describeAction(a, names, formatDate))).join('; ') || 'changed details'}
+          </p>
+        )}
       </div>
 
       {notice && (
         <p role="status" className="rounded-xl bg-ok-bg p-3 font-medium text-ok">
           {notice}
         </p>
+      )}
+
+      {plan.status === 'approved' && (
+        <section className="rounded-2xl border border-ok/30 bg-ok-bg p-5" data-testid="approved-box">
+          <p className="font-semibold text-ok">
+            Approved{approver ? ` by ${approver}` : ''}
+            {approval ? ` at ${formatTimeOfDay(approval.created_at)}` : ''}. Nothing has been sent. Next: prepare messages.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Link to={`/plans/${plan.id}/drafts`} className={btnPrimary}>
+              Prepare messages
+            </Link>
+            <Link to={`/disruptions/${plan.disruption_id}/log`} className={btnSecondary}>
+              View activity log
+            </Link>
+          </div>
+        </section>
       )}
 
       {/* Follow-up after approving something that still has open questions. */}
@@ -179,20 +218,8 @@ export function PlanReview() {
               <li key={q}>{names.humanize(q)}</li>
             ))}
           </ul>
-          <Link to={`/plans/${plan.id}/drafts`} className={cn(btnSecondary, 'mt-4')}>
-            Draft a message
-          </Link>
         </section>
       )}
-      {plan.status === 'approved' && status !== 'needs_confirmation' && (
-        <section className="rounded-2xl border border-ok/30 bg-ok-bg p-5">
-          <p className="font-semibold text-ok">Approved. Nothing is sent automatically.</p>
-          <Link to={`/plans/${plan.id}/drafts`} className={cn(btnSecondary, 'mt-3')}>
-            Draft messages
-          </Link>
-        </section>
-      )}
-
       <section className={card} aria-labelledby="what">
         <h2 id="what" className="text-lg font-semibold">
           What this plan does
@@ -244,7 +271,7 @@ export function PlanReview() {
         </details>
       </section>
 
-      {comparison && (comparison.benefits.length > 0 || watchOut.length > 0) && (
+      {comparison && (benefits.length > 0 || watchOut.length > 0) && (
         <section className={card} aria-labelledby="notes">
           <h2 id="notes" className="text-lg font-semibold">
             Good and not so good <AiBadge generatedBy={explanation.data?.generated_by} />
@@ -252,10 +279,10 @@ export function PlanReview() {
           {API_MODE !== 'real' && explanation.data?.generated_by === 'template' && (
             <p className="text-xs text-muted">Demo only: template text, because the AI explanation isn't built yet.</p>
           )}
-          <div className={cn('mt-2 grid gap-4', comparison.benefits.length > 0 && watchOut.length > 0 && 'sm:grid-cols-2')}>
-            {comparison.benefits.length > 0 && (
+          <div className={cn('mt-2 grid gap-4', benefits.length > 0 && watchOut.length > 0 && 'sm:grid-cols-2')}>
+            {benefits.length > 0 && (
               <ul className="list-disc space-y-1 pl-5 text-sm">
-                {comparison.benefits.map((b) => (
+                {benefits.map((b) => (
                   <li key={b}>{names.humanize(b)}</li>
                 ))}
               </ul>
@@ -276,6 +303,19 @@ export function PlanReview() {
         <h2 id="decide" className="text-lg font-semibold">
           Your decision
         </h2>
+
+        <p className="text-sm" data-testid="version-note">
+          Approve applies to <strong>version {plan.version}</strong>
+          {demoEdit ? ' (your demo edit)' : ''}.
+        </p>
+        {demoEdit && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-warn-bg p-3 text-sm">
+            <span>This version exists only in the demo. The server still has the original.</span>
+            <button className={btnSecondary} disabled={busy || !proposed} onClick={() => discard.mutate()}>
+              {discard.isPending ? 'Discarding…' : 'Discard demo edit (back to version 1)'}
+            </button>
+          </div>
+        )}
 
         {!isOwner && !session.staffCanTry && (
           <p role="status" className="rounded-xl bg-info-bg p-3 font-semibold">
@@ -394,7 +434,7 @@ export function PlanReview() {
               <button
                 className={btnSecondary}
                 onClick={() => {
-                  [approve, reject, askInfo, edit, recheck].forEach((m) => m.reset())
+                  [approve, reject, askInfo, edit, recheck, discard].forEach((m) => m.reset())
                   refresh()
                 }}
               >

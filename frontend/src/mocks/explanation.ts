@@ -7,12 +7,25 @@ export function buildExplanation(disruptionId: string, plans: RecoveryPlan[]): E
   const proposed = plans.filter((p) => p.status !== 'superseded')
   const works = proposed.filter((p) => p.validation?.status === 'feasible').length
 
+  // "Cheapest" only compares costs the API actually returned; unknown costs are left out.
+  const costs = proposed.flatMap((p) => (p.estimated_cost ? [Number(p.estimated_cost.amount)] : []))
+  const cheapest = costs.length > 1 ? Math.min(...costs) : null
+
   const plan_comparisons = proposed.map((plan) => {
+    const failing = (plan.validation?.checks ?? []).some((c) => c.result === 'fail')
     const arrival = (plan.actions[0]?.parameters as Record<string, unknown> | undefined)?.expected_arrival_date
+
     const benefits: string[] = []
     if (plan.validation?.status === 'feasible') benefits.push('Every check passed with the data we have.')
-    if (plan.estimated_cost) benefits.push(`Costs ${formatMoney(plan.estimated_cost)}.`)
-    if (typeof arrival === 'string') benefits.push(`Arrives ${formatDate(arrival)}.`)
+    if (plan.estimated_cost) {
+      benefits.push(
+        cheapest !== null && Number(plan.estimated_cost.amount) === cheapest
+          ? `Cheapest option (${formatMoney(plan.estimated_cost)}).`
+          : `Costs ${formatMoney(plan.estimated_cost)}.`,
+      )
+    }
+    // A fact that makes a check fail (such as a late arrival) is never presented as a benefit.
+    if (typeof arrival === 'string' && !failing) benefits.push(`Arrives ${formatDate(arrival)}.`)
 
     const limitations: string[] = []
     for (const c of plan.validation?.checks ?? []) if (c.result !== 'pass') limitations.push(c.detail)

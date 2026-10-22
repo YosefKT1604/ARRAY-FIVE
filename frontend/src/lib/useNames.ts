@@ -43,8 +43,17 @@ export function useNames() {
         const s = supplier(id)
         return s ? (short ? (s.aliases?.[0] ?? s.name) : s.name) : id
       }
-      case 'delivery':
-        return `Delivery ${id}`
+      case 'delivery': {
+        // "Maju's delivery (40 chairs, due Wed 21 Oct)": people know deliveries by who and what, not by ID.
+        const d = delivery(id)
+        const s = d && supplier(d.supplier_id)
+        if (!d || !s) return `Delivery ${id}`
+        const owner = `${s.aliases?.[0] ?? s.name}'s delivery`
+        if (short) return owner
+        const r = resource(d.resource_id)
+        const what = r ? `${d.quantity} ${r.unit}${d.quantity === 1 ? '' : 's'}` : `${d.quantity} items`
+        return `${owner} (${what}, due ${formatDate(d.expected_date)})`
+      }
       case 'resource':
         return resource(id)?.name ?? id
       case 'job':
@@ -69,11 +78,6 @@ export function useNames() {
       .replace(/\b(?:[A-Z]{1,3})-\d{2,4}\b/g, (id) => {
         const kind = kindOf(id)
         if (!kind) return id
-        if (kind === 'delivery') {
-          const d = delivery(id)
-          const s = d && supplier(d.supplier_id)
-          return s ? `${s.aliases?.[0] ?? s.name}'s delivery` : label(id)
-        }
         if (kind === 'commitment') return label(id).replace('Commitment for', 'the commitment for')
         return label(id)
       })
