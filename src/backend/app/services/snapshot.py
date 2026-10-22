@@ -24,6 +24,8 @@ def load_business() -> contracts.Business:
 def to_contracts(db: Session, model: type[Base], contract: type[contracts.ContractModel]) -> list:
     return [contract.model_validate(row) for row in db.scalars(select(model).order_by(model.id))]
 
+# The read-only bundle handed to the impact and recovery modules, which never touch the database themselves.
+# It includes every record, not only the incident's, so the modules can follow dependencies freely.
 def build_snapshot(db: Session, incident: NormalizedIncident) -> BusinessSnapshot:
     return BusinessSnapshot(
         as_of=datetime.now(UTC),

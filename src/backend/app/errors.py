@@ -30,6 +30,8 @@ DEFAULT_CODE = {
     500: ErrorCode.INTERNAL_ERROR,
 }
 
+# For errors where the status alone is ambiguous (several kinds of 409). It subclasses Starlette's
+# HTTPException so the existing http_error handler picks it up without a handler of its own.
 class ApiError(StarletteHTTPException):
     def __init__(self, status_code: int, code: ErrorCode, detail: str):
         super().__init__(status_code=status_code, detail=detail)

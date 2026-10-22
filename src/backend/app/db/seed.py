@@ -61,6 +61,8 @@ def seed() -> None:
     with SessionLocal() as session:
         load_fixture(session)
 
+# Runs on server start. create_all only adds missing tables, and an existing database is left alone,
+# so the manual seed command is the way to reset the demo.
 def seed_if_empty() -> None:
     Base.metadata.create_all(engine)
     with SessionLocal() as session:

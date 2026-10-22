@@ -38,6 +38,7 @@ def record_decision(db: Session, record: RecoveryPlanRecord, reviewer_id: str, d
         decided_at=datetime.now(UTC),
     )
     record.status = PLAN_STATUS[decision]
+    # Only an approval settles the disruption; a rejection or a question leaves the other plans open.
     if decision == Decision.APPROVED:
         disruption = db.get(Disruption, record.disruption_id)
         disruption.status = DisruptionStatus.DECIDED

@@ -11,11 +11,13 @@ from app.services.snapshot import build_snapshot
 from contracts import NormalizedIncident, DisruptionStatus, ImpactResult, UnresolvedField
 from contracts.enums import ActivityType, UnresolvedReason
 
+# Count + 1 only stays unique because disruptions are never deleted.
 def next_disruption_id(db: Session) -> str:
     count = db.scalar(select(func.count()).select_from(Disruption))
     return f"D-{count + 1:03d}"
 
-# Fields the impact analysis cannot work without
+# Fields the impact analysis cannot work without (CONTRACTS §6.1). If any is missing we keep the report
+# but mark it needs_clarification instead of guessing a value.
 MATERIAL_FIELDS = ["supplier_id", "resource_id", "quantity_affected", "new_arrival_date"]
 
 def missing_material_fields(data: DisruptionCreate) -> list[UnresolvedField]:
@@ -66,12 +68,15 @@ def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
     db.commit()
     return impact
 
+# Once a disruption is decided, a new report about the same delivery is a genuinely new problem.
 CLOSED_STATUSES = [DisruptionStatus.CLOSED, DisruptionStatus.DECIDED]
 
+# Same delivery + same new date while still open = someone reported it twice.
 def find_open_duplicate(db: Session, data: DisruptionCreate) -> Disruption | None:
     if data.delivery_id is None or data.new_arrival_date is None:
         return None
     query = select(Disruption).where(Disruption.status.not_in(CLOSED_STATUSES))
+    # The incident is a JSON column, so the comparison happens here in Python rather than in SQL.
     for disruption in db.scalars(query):
         incident = disruption.incident
         if (incident.get("delivery_id") == data.delivery_id

@@ -22,15 +22,19 @@ def get_plan_or_404(db: Session, plan_id: str) -> RecoveryPlanRecord:
         raise HTTPException(status_code=404, detail=f"Recovery plan {plan_id} not found")
     return record
 
+# Shared by approve, reject and request-info. Permission comes first, so staff can't learn anything about the plan.
 def check_can_decide(db: Session, record: RecoveryPlanRecord, user: CurrentUser, data: DecisionRequest) -> RecoveryPlan:
     if not can_decide(user):
         log_activity(db, record.disruption_id, ActivityType.APPROVAL_DENIED, actor_id=user.id, plan_id=record.id,
                      details={"role": user.role})
+        # Commit before raising: the request fails, but the denied attempt must still show up in the history.
         db.commit()
         raise HTTPException(status_code=403, detail=f"{user.id} ({user.role}) may not approve or reject plans")
     plan = to_contract(record)
+    # The owner must be deciding on the version they actually looked at, not one edited since.
     if data.plan_version != plan.version:
         raise ApiError(status_code=409, code=ErrorCode.STALE_PLAN_VERSION, detail=f"Plan {plan.id} is at version {plan.version}, not {data.plan_version}")
+    # A plan on hold for more info can still be decided later; approved or rejected plans are final.
     if plan.status not in (PlanStatus.PROPOSED, PlanStatus.MORE_INFO_REQUESTED):
         raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION, detail=f"Plan {plan.id} is already {plan.status}")
     return plan
@@ -43,10 +47,13 @@ def get_recovery_plan_by_id(plan_id: str, db: DbSession) -> RecoveryPlan:
 def approve_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: DbSession) -> ApprovalOut:
     record = get_plan_or_404(db, plan_id)
     plan = check_can_decide(db, record, user, data)
+    # One approved plan per disruption, otherwise the business would act twice on the same shortage.
+    # Rejecting the leftover plans afterwards is still fine, so this check lives here, not in check_can_decide.
     disruption = db.get(Disruption, record.disruption_id)
     if disruption.status == DisruptionStatus.DECIDED:
         raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION,
                        detail=f"Disruption {disruption.id} already has an approved plan")
+    # needs_confirmation plans may be approved for now (CONTRACTS §10 #2, still waiting on a team decision).
     if plan.validation is None or plan.validation.status == ValidationStatus.INFEASIBLE:
         raise ApiError(status_code=409, code=ErrorCode.PLAN_INFEASIBLE, detail=f"Plan {plan_id} is infeasible and cannot be approved")
     approval = record_decision(db, record, user.id, Decision.APPROVED, data)
@@ -63,6 +70,7 @@ def reject_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: D
 def request_info(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: DbSession) -> ApprovalOut:
     record = get_plan_or_404(db, plan_id)
     check_can_decide(db, record, user, data)
+    # Asking for "more info" is useless unless it says what's missing.
     if not data.comments.strip():
         raise HTTPException(status_code=422, detail="Say what information is needed in comments")
     approval = record_decision(db, record, user.id, Decision.MORE_INFO_REQUESTED, data)

@@ -12,6 +12,8 @@ def next_activity_id(db: Session) -> str:
     count = db.scalar(select(func.count()).select_from(ActivityLog))
     return f"LOG-{count + 1:04d}"
 
+# Deliberately doesn't commit: the caller's commit saves the log entry together with the change it describes,
+# so we never log something that didn't actually happen.
 def log_activity(db: Session, disruption_id: str, activity_type: ActivityType, actor_id: str = "system",
                  plan_id: str | None = None, details: dict[str, Any] | None = None) -> None:
     db.add(ActivityLog(

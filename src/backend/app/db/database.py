@@ -9,6 +9,7 @@ engine = create_engine(settings.database_url, connect_args={"check_same_thread":
 SessionLocal = sessionmaker(bind=engine)
 
 class UTCDateTime(TypeDecorator):
+    """SQLite forgets timezones, so store plain UTC and label it as UTC again when it's read back."""
     impl = DateTime
     cache_ok = True
 
@@ -21,4 +22,5 @@ class UTCDateTime(TypeDecorator):
         return value.replace(tzinfo=UTC) if value is not None else None
 
 class Base(DeclarativeBase):
+    # Every Mapped[datetime] column in every model uses UTCDateTime automatically.
     type_annotation_map = {datetime: UTCDateTime}

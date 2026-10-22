@@ -9,9 +9,12 @@ from app.services.snapshot import build_snapshot
 from contracts import RecoveryPlan, DisruptionStatus, ImpactResult, NormalizedIncident
 from contracts.enums import ActivityType
 
+# Approvals only update the status column, so it overrides the (older) status stored inside the JSON.
 def to_contract(record: RecoveryPlanRecord) -> RecoveryPlan:
     return RecoveryPlan.model_validate({**record.plan, "status": record.status})
 
+# The recovery module always numbers its plans RP-001 upwards; the backend renumbers them
+# so plans from different disruptions never clash.
 def with_new_id(plan: RecoveryPlan, plan_id: str) -> RecoveryPlan:
     data = plan.model_dump(mode="json")
     data["id"] = plan_id
@@ -22,6 +25,7 @@ def with_new_id(plan: RecoveryPlan, plan_id: str) -> RecoveryPlan:
 def create_recovery_plans(db: Session, disruption: Disruption) -> list[RecoveryPlan]:
     incident = NormalizedIncident.model_validate(disruption.incident)
     impact = ImpactResult.model_validate(disruption.impact)
+    # Fresh snapshot rather than the one from analysis: the business data may have changed in between.
     snapshot = build_snapshot(db, incident)
     count = db.scalar(select(func.count()).select_from(RecoveryPlanRecord))
 
