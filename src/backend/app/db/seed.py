@@ -2,6 +2,9 @@ import json
 from datetime import datetime, date, UTC
 from pathlib import Path
 from typing import Any
+
+from sqlalchemy import select, func
+
 from app.models.approval import Approval
 from app.models.disruption import Disruption
 from app.models.recovery_plan import RecoveryPlanRecord
@@ -13,7 +16,6 @@ from app.models.dependency import Dependency
 from app.models.job import Job
 from app.models.resource import Resource
 from app.models.supplier import Supplier, SupplierOffering
-
 
 SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.json"
 
@@ -54,6 +56,12 @@ def seed() -> None:
     Base.metadata.create_all(engine)
     with SessionLocal() as session:
         load_fixture(session)
+
+def seed_if_empty() -> None:
+    Base.metadata.create_all(engine)
+    with SessionLocal() as session:
+        if session.scalar(select(func.count()).select_from(Resource)) == 0:
+            load_fixture(session)
 
 if __name__ == "__main__":
     seed()
