@@ -73,3 +73,26 @@ def test_plan_cannot_be_decided_twice(client):
     response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
     assert response.status_code == 409
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
+
+def test_owner_requests_more_info(client):
+    prepare_plans(client)
+
+    response = client.post("/api/v1/recovery-plans/RP-001/request-info",
+                           json={"plan_version": 1, "comments": "Is Cahaya's price confirmed?"}, headers=OWNER)
+    assert response.status_code == 201
+    assert response.json()["decision"] == "more_info_requested"
+    assert client.get("/api/v1/recovery-plans/RP-001").json()["status"] == "more_info_requested"
+
+def test_plan_can_be_approved_after_info_requested(client):
+    prepare_plans(client)
+    client.post("/api/v1/recovery-plans/RP-001/request-info", json=VERSION_1, headers=OWNER)
+
+    response = client.post("/api/v1/recovery-plans/RP-001/approve", json=VERSION_1, headers=OWNER)
+    assert response.status_code == 201
+
+def test_staff_cannot_request_info(client):
+    prepare_plans(client)
+
+    response = client.post("/api/v1/recovery-plans/RP-001/request-info", json=VERSION_1, headers=STAFF)
+    assert response.status_code == 403
+    assert response.json()["code"] == "FORBIDDEN"

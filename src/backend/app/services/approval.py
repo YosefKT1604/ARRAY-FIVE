@@ -11,6 +11,18 @@ from app.services.activity_log import log_activity
 from contracts import Decision, DisruptionStatus, PlanStatus
 from contracts.enums import ActivityType
 
+PLAN_STATUS = {
+    Decision.APPROVED: PlanStatus.APPROVED,
+    Decision.REJECTED: PlanStatus.REJECTED,
+    Decision.MORE_INFO_REQUESTED: PlanStatus.MORE_INFO_REQUESTED,
+}
+
+ACTIVITY_TYPE = {
+    Decision.APPROVED: ActivityType.PLAN_APPROVED,
+    Decision.REJECTED: ActivityType.PLAN_REJECTED,
+    Decision.MORE_INFO_REQUESTED: ActivityType.INFO_REQUESTED,
+}
+
 
 def next_approval_id(db: Session):
     count = db.scalar(select(func.count()).select_from(Approval))
@@ -26,14 +38,12 @@ def record_decision(db: Session, record: RecoveryPlanRecord, reviewer_id: str, d
         comments=data.comments,
         decided_at=datetime.now(UTC),
     )
+    record.status = PLAN_STATUS[decision]
     if decision == Decision.APPROVED:
-        record.status = PlanStatus.APPROVED
         disruption = db.get(Disruption, record.disruption_id)
         disruption.status = DisruptionStatus.DECIDED
-    else:
-        record.status = PlanStatus.REJECTED
     db.add(approval)
-    activity_type = ActivityType.PLAN_APPROVED if decision == Decision.APPROVED else ActivityType.PLAN_REJECTED
-    log_activity(db, record.disruption_id, activity_type, actor_id=reviewer_id, plan_id=record.id, details={"approval_id": approval.id, "plan_version": data.plan_version})
+    log_activity(db, record.disruption_id, ACTIVITY_TYPE[decision], actor_id=reviewer_id, plan_id=record.id,
+                 details={"approval_id": approval.id, "plan_version": data.plan_version})
     db.commit()
     return approval

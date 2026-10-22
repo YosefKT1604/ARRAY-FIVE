@@ -29,7 +29,7 @@ def check_can_decide(db: Session, record: RecoveryPlanRecord, user: CurrentUser,
     plan = to_contract(record)
     if data.plan_version != plan.version:
         raise ApiError(status_code=409, code=ErrorCode.STALE_PLAN_VERSION, detail=f"Plan {plan.id} is at version {plan.version}, not {data.plan_version}")
-    if plan.status != PlanStatus.PROPOSED:
+    if plan.status not in (PlanStatus.PROPOSED, PlanStatus.MORE_INFO_REQUESTED):
         raise ApiError(status_code=409, code= ErrorCode.INVALID_STATE_TRANSITION, detail=f"Plan {plan.id} is already {plan.status}")
     return plan
 
@@ -51,4 +51,11 @@ def reject_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: D
     record = get_plan_or_404(db, plan_id)
     check_can_decide(db, record, user, data)
     approval = record_decision(db, record, user.id, Decision.REJECTED, data)
+    return ApprovalOut.model_validate(approval)
+
+@router.post("/{plan_id}/request-info", status_code=201, response_model=ApprovalOut)
+def request_info(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: DbSession) -> ApprovalOut:
+    record = get_plan_or_404(db, plan_id)
+    check_can_decide(db, record, user, data)
+    approval = record_decision(db, record, user.id, Decision.MORE_INFO_REQUESTED, data)
     return ApprovalOut.model_validate(approval)
