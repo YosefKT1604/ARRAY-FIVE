@@ -10,7 +10,7 @@ from contracts.enums import ActivityType
 
 def next_activity_id(db: Session) -> str:
     count = db.scalar(select(func.count()).select_from(ActivityLog))
-    return f"AL-{count + 1:03d}"
+    return f"LOG-{count + 1:04d}"
 
 def log_activity(db: Session, disruption_id: str, activity_type: ActivityType, actor_id: str = "system",
                  plan_id: str | None = None, details: dict[str, Any] | None = None) -> None:

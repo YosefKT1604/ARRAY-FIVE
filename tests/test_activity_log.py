@@ -46,3 +46,10 @@ def test_activity_log_for_unknown_disruption_returns_404(client):
     response = client.get("/api/v1/disruptions/D-999/activity-log")
     assert response.status_code == 404
     assert response.json()["code"] == "NOT_FOUND"
+
+def test_activity_log_ids_and_timestamps_follow_contract(seeded_client):
+    run_demo_flow(seeded_client)
+
+    first = seeded_client.get("/api/v1/disruptions/D-001/activity-log").json()["items"][0]
+    assert first["id"] == "LOG-0001"
+    assert first["created_at"].endswith("Z")
