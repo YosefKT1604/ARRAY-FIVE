@@ -67,9 +67,9 @@ npm run test:e2e                                           # full demo in mock m
 
 Setup: mock mode (or hybrid with a freshly seeded backend), signed in as **Nurul (Owner)**. The header says "Demo date: Tue 20 Oct".
 
-1. **Dashboard** (10 s). *"This is Seri Kenanga Events. Today is 20 October, and an event on Thursday needs 70 chairs."* Click **Report a problem**.
+1. **Dashboard** (10 s). *"This is Seri Kenanga Events, a small event planner in Kuala Lumpur. Today is Tuesday 20 October. On Thursday we have two events, a wedding and a seminar, that need 70 folding chairs between them."* Click **Report a problem**.
 2. **Report** (20 s). Click **Use the demo message**, then **Read message**. *"Maju, our chair supplier, sent a WhatsApp saying only 20 of 40 chairs arrive tomorrow. The app reads it and fills in the form. We check it, nothing is saved yet."* Click **Report and check impact**.
-3. **Impact** (20 s). *"It shows what this touches: the delivery, the chairs, and the events that depend on them, each with how serious it is. The numbers come from the rules engine, not the screen."* Click **See recovery options**.
+3. **Impact** (20 s). *"We need 70 chairs on Thursday, but only 50 will be here, so we are short 20. It traces the whole chain: Maju's delivery, the chairs, then the wedding and the seminar that depend on them. It also checks what is not affected: the birthday party on Sunday is fine, because the late chairs arrive on Friday. These results come from the rules engine, not from the screen."* Click **See recovery options**.
 4. **Plans** (25 s). *"Three options. The recommended one, renting 20 chairs from Cahaya for RM 80, is checked and works. Delima is cheaper, but it arrives too late, so it is marked 'Won't work' and can't be approved. The third needs Maju to confirm. See the amber 'Still to confirm' list."* Click **Review this plan** on the recommended one.
 5. **Edit** (25 s). *"What if we only rent 10?"* Click **Edit**, change 20 to 10, **Save and re-check**. *"A new version is checked again. It now says 'Not enough quantity, short 10', so Approve is off."* Click **Discard demo edit (back to version 1)**.
 6. **Approve** (10 s). Click **Approve plan**. *"Only the owner can do this. Switch to Hafiz (Staff) and the buttons are off with a reason."* (Switch back to Nurul.)
