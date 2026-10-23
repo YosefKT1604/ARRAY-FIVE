@@ -14,9 +14,28 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
 
 SCHEMA_VERSION = "1.0"
+
+
+# --- Lenient text fields ------------------------------------------------------------
+
+
+def empty_if_none(value: Any) -> Any:
+    """Turn None into "" (Person 2's contracts allow None where we keep an empty string)."""
+    return "" if value is None else value
+
+
+def text_or_none(value: Any) -> Any:
+    """Keep None, write any other value as text (e.g. a raw quantity 20 becomes "20")."""
+    return None if value is None else str(value)
+
+
+# Text that may arrive as None from other modules; stored as "" so code can always treat it as a string.
+Text = Annotated[str, BeforeValidator(empty_if_none)]
+# Text or None; a non-text value (a number, a date) is converted to its text form.
+OptionalText = Annotated[str | None, BeforeValidator(text_or_none)]
 
 
 # --- Base classes -------------------------------------------------------------
@@ -176,7 +195,7 @@ class Supplier(InputModel):
     aliases: list[str] = Field(default_factory=list)
     contact_reference: str | None = None
     phone: str | None = None  # not in CONTRACTS yet (ask P2); any format, compared after normalising
-    reliability_notes: str = ""
+    reliability_notes: Text = ""
 
 
 class SupplierOffering(InputModel):
@@ -222,7 +241,7 @@ class BusinessJob(InputModel):
 
     id: str
     name: str
-    description: str = ""
+    description: Text = ""
     customer_ref: str | None = None
     event_date: date
     deadline: date
@@ -301,9 +320,9 @@ class UnresolvedField(OutputModel):
 
     field: IncidentField
     reason: UnresolvedReason
-    raw_value: str | None = None
+    raw_value: OptionalText = None
     candidates: list[str] = Field(default_factory=list)
-    note: str = ""
+    note: Text = ""
 
 
 class DraftIncident(OutputModel):
