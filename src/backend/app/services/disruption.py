@@ -1,10 +1,10 @@
-from datetime import datetime, UTC
-
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
+from app.errors import ApiError, ErrorCode
 from app.models.disruption import Disruption
 from app.schemas.disruption import DisruptionCreate
+from app.services import clock
 from app.services.activity_log import log_activity
 from app.services.impact import analyze_impact
 from app.services.snapshot import build_snapshot
@@ -31,7 +31,7 @@ def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
     unresolved = missing_material_fields(data)
     incident = NormalizedIncident(
         id=next_disruption_id(db),
-        reported_at=datetime.now(UTC),
+        reported_at=clock.now(),
         unresolved_fields=unresolved,
         **data.model_dump(exclude={"raw_message", "client_request_id"}),
     )
@@ -62,6 +62,12 @@ def get_disruption(db: Session, disruption_id: str) -> Disruption | None:
 def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
     incident = NormalizedIncident.model_validate(disruption.incident)
     impact = analyze_impact(incident, build_snapshot(db, incident))
+    # A failed run (e.g. the delivery doesn't exist) found nothing to analyze; storing it would look like
+    # "nothing affected". Leave the disruption as it was and tell the user what is wrong instead.
+    if impact.analysis_status == "failed":
+        problems = [issue["message"] for issue in impact.data_issues if issue.get("severity") == "error"]
+        raise ApiError(status_code=422, code=ErrorCode.VALIDATION_ERROR,
+                       detail="Impact analysis failed: " + ("; ".join(problems) or "the incident could not be analyzed"))
     disruption.impact = impact.model_dump(mode="json")
     disruption.status = DisruptionStatus.ANALYZED
     log_activity(db, disruption.id, ActivityType.ANALYSIS_COMPLETED, details={"affected_count": len(impact.affected_entities)})

@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, UTC
 from pathlib import Path
 
 from sqlalchemy import select
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 
 import contracts
 from app.db.database import Base
+from app.services import clock
 from app.models.commitment import Commitment
 from app.models.delivery import Delivery
 from app.models.dependency import Dependency
@@ -28,7 +28,7 @@ def to_contracts(db: Session, model: type[Base], contract: type[contracts.Contra
 # It includes every record, not only the incident's, so the modules can follow dependencies freely.
 def build_snapshot(db: Session, incident: NormalizedIncident) -> BusinessSnapshot:
     return BusinessSnapshot(
-        as_of=datetime.now(UTC),
+        as_of=clock.now(),
         business=load_business(),
         suppliers=to_contracts(db, Supplier, contracts.Supplier),
         supplier_offerings=to_contracts(db, SupplierOffering, contracts.SupplierOffering),

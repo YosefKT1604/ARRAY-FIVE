@@ -1,3 +1,4 @@
+import pytest
 import json
 from pathlib import Path
 
@@ -10,6 +11,7 @@ def report_and_analyze(client):
     client.post("/api/v1/disruptions", json=FORM)
     client.post("/api/v1/disruptions/D-001/analyze")
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_generate_plans_returns_three_ranked_plans(client):
     report_and_analyze(client)
 
@@ -26,6 +28,7 @@ def test_generate_plans_returns_three_ranked_plans(client):
     disruption = client.get("/api/v1/disruptions/D-001").json()
     assert disruption["status"] == "plans_ready"
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_list_plans_returns_saved_plans(client):
     report_and_analyze(client)
     created = client.post("/api/v1/disruptions/D-001/recovery-plans").json()
@@ -47,6 +50,7 @@ def test_generate_plans_twice_returns_409(client):
     assert response.status_code == 409
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_get_one_plan(client):
     report_and_analyze(client)
     client.post("/api/v1/disruptions/D-001/recovery-plans")

@@ -1,3 +1,4 @@
+import pytest
 import json
 from pathlib import Path
 
@@ -22,6 +23,7 @@ def test_list_and_get_disruption(client):
 def test_unknown_disruption_returns_404(client):
     assert client.get("/api/v1/disruptions/D-999").status_code == 404
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_analyze_returns_impact_and_marks_disruption_analyzed(client):
     client.post("/api/v1/disruptions", json=FORM)
     response = client.post("/api/v1/disruptions/D-001/analyze")
@@ -41,6 +43,7 @@ def test_analyze_unknown_disruption_returns_404(client):
     response = client.post("/api/v1/disruptions/D-999/analyze")
     assert response.status_code == 404
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_same_open_incident_returns_409(client):
     client.post("/api/v1/disruptions", json=FORM)
     # Still open after analysis, so a second identical report counts as a duplicate.
@@ -57,6 +60,7 @@ def test_different_new_date_is_not_a_duplicate(client):
     response = client.post("/api/v1/disruptions", json={**FORM, "new_arrival_date": "2026-10-24"})
     assert response.status_code == 201
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_decided_disruption_can_be_reported_again(client):
     client.post("/api/v1/disruptions", json=FORM)
     client.post("/api/v1/disruptions/D-001/analyze")
@@ -81,6 +85,7 @@ def test_needs_clarification_cannot_be_analyzed(client):
     assert response.status_code == 409
     assert response.json()["code"] == "INVALID_STATE_TRANSITION"
 
+@pytest.mark.usefixtures("seeded_client")  # the real impact engine needs the demo business data
 def test_decided_disruption_cannot_be_analyzed_again(client):
     client.post("/api/v1/disruptions", json=FORM)
     client.post("/api/v1/disruptions/D-001/analyze")

@@ -419,7 +419,7 @@ class AffectedEntity(InputModel):
     entity_type: EntityType
     entity_id: str
     impact_status: ImpactStatus
-    severity: int = Field(ge=0, le=10)
+    severity: int | None = Field(default=None, ge=0, le=10)  # None when unresolved (P3's engine)
     reason: str
     dependency_path: list[str]
     evidence: list[Evidence] = Field(default_factory=list)

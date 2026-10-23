@@ -15,7 +15,8 @@ class AffectedEntity(ContractModel):
     entity_type: EntityType
     entity_id: str
     impact_status: ImpactStatus
-    severity: int = Field(ge=0, le=10)
+    # None when impact_status is "unresolved": the engine cannot score what it cannot confirm.
+    severity: int | None = Field(ge=0, le=10)
     reason: str
     dependency_path: list[str]
     evidence: list[Evidence] = []
@@ -39,3 +40,7 @@ class ImpactResult(ContractModel):
     checked_not_affected: list[CheckedNotAffected] = []
     resource_shortfalls: list[ResourceShortfall] = []
     unresolved_facts: list[dict[str, Any]] = []
+    # Extensions proposed by P3 (impact_engine INTEGRATION.md §7). "partial" means some data was missing or
+    # rejected, so an entity missing from affected_entities is not proof it is safe; data_issues says why.
+    analysis_status: Literal["complete", "partial", "failed"] | None = None
+    data_issues: list[dict[str, Any]] = []
