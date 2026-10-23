@@ -1,3 +1,15 @@
+<!-- PRODUCT NAME: decided at team call -->
+
+## Quick start
+
+1. Install Python 3.13, [uv](https://docs.astral.sh/uv/) and Node 20+.
+2. Backend, from `srcackend`: `python -m uv sync`
+3. Start it: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`
+4. Demo date: `$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"` (before step 3).
+5. Frontend, from `frontend`: `npm install; npm run dev`, then open http://localhost:5173.
+6. Reset the demo data, from `srcackend`: `python -m uv run python -m app.db.seed`
+7. Full run steps: [section 18](#18-running-locally). Frontend modes and demo script: [frontend/README.md](frontend/README.md).
+
 # Project README
 
 ## 1. Project Overview

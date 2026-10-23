@@ -54,7 +54,7 @@ Add `?dev=1` to the address to show the small "⚙ Dev" panel (switch scenario, 
 ## Reset the demo
 
 - **Mock mode:** close the tab and open it again (state lives in the browser session), or use "Reset mock" in the Dev panel.
-- **Real backend:** in terminal 1 press Ctrl+C, run `python -m uv run python -m app.db.seed`, start the backend again, then reload the page.
+- **Real backend:** in terminal 1 press Ctrl+C, run `python -m uv run python -m app.db.seed` (from `srcackend`), start the backend again, then reload the page.
 
 ## Checks
 
