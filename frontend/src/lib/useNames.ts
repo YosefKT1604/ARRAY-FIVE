@@ -12,6 +12,19 @@ export const KIND_LABEL: Record<EntityKind, string> = {
   commitment: 'Commitment',
 }
 
+/**
+ * Removes a bracketed ID whose name is already written earlier in the same clause, e.g. "Maju Rental Supplies (S-01)"
+ * or "Tekno seminar (J-02) customer commitment (CM-02)". Otherwise humanize() would turn the ID into the name again.
+ * `nameOf` gives the name an ID stands for (for a commitment: its event's name), or undefined if unknown.
+ */
+export function dropRepeatedIds(text: string, nameOf: (id: string) => string | undefined): string {
+  return text.replace(/ \(((?:[A-Z]{1,3})-\d{2,4})\)/g, (match, id: string, offset: number) => {
+    const name = nameOf(id)
+    const clause = text.slice(0, offset).split(/[.;:]\s/).pop() ?? ''
+    return name && clause.toLowerCase().includes(name.toLowerCase()) ? '' : match
+  })
+}
+
 /** Turns entity IDs from the API into names people recognise. IDs stay opaque: types come from lookups. */
 export function useNames() {
   const jobs = useQuery({ queryKey: ['jobs'], queryFn: listJobs })
@@ -73,7 +86,15 @@ export function useNames() {
    * Unknown IDs are left alone. Keep the raw text in a "Details" section.
    */
   function humanize(text: string): string {
-    return text
+    const nameOf = (id: string) => {
+      const kind = kindOf(id)
+      if (kind === 'commitment') {
+        const j = commitmentJobId(id)
+        return j ? job(j)?.name : undefined
+      }
+      return kind && kind !== 'delivery' ? label(id) : undefined
+    }
+    return dropRepeatedIds(text, nameOf)
       .replace(/\b\d{4}-\d{2}-\d{2}\b/g, (d) => formatDate(d))
       .replace(/\b(?:[A-Z]{1,3})-\d{2,4}\b/g, (id) => {
         const kind = kindOf(id)

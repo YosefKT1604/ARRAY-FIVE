@@ -46,7 +46,7 @@ def test_model_agrees_with_rules(snapshot):
     assert len(adapter.calls) == 1
     assert result.generated_by == "model:mock" and not result.fallback_used and result.warnings == []
     assert result.unresolved_fields == []
-    assert result.field_evidence["quantity_affected"] == "rules and AI model agree"
+    assert result.field_evidence["quantity_affected"] == "found in the message; the AI agrees"
 
 
 def test_model_disagrees_with_rules(snapshot):

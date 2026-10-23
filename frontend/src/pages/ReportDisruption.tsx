@@ -153,7 +153,7 @@ export function ReportDisruption() {
           </p>
         )}
         {!error && flagged && <p className="mt-1 text-sm text-warn">{unresolved.get(name)} Please fill this in.</p>}
-        {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">From the message: “{evidence}”</p>}
+        {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">How we got this: {evidence}</p>}
       </div>
     )
   }
@@ -221,8 +221,8 @@ export function ReportDisruption() {
               Message read. Check the details below.{' '}
               <AiBadge generatedBy={extraction.generated_by} />
             </p>
-            {API_MODE !== 'real' && (
-              <p className="text-muted">Demo only: message reading is simulated with simple keyword rules.</p>
+            {API_MODE === 'mock' && (
+              <p className="text-muted">Mock mode: message reading is simulated with simple keyword rules.</p>
             )}
             {extraction.needs_clarification && (
               <div>

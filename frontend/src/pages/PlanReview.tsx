@@ -276,8 +276,8 @@ export function PlanReview() {
           <h2 id="notes" className="text-lg font-semibold">
             Good and not so good <AiBadge generatedBy={explanation.data?.generated_by} />
           </h2>
-          {API_MODE !== 'real' && explanation.data?.generated_by === 'template' && (
-            <p className="text-xs text-muted">Demo only: template text, because the AI explanation isn't built yet.</p>
+          {API_MODE === 'mock' && (
+            <p className="text-xs text-muted">Mock mode: simulated template text.</p>
           )}
           <div className={cn('mt-2 grid gap-4', benefits.length > 0 && watchOut.length > 0 && 'sm:grid-cols-2')}>
             {benefits.length > 0 && (

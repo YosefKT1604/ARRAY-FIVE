@@ -83,7 +83,7 @@ export function Drafts() {
         <p className="mt-1 text-muted">
           Nothing is sent from this app. Check each message, fill in the highlighted fields, then send it yourself.
         </p>
-        {API_MODE !== 'real' && <p className="mt-1 text-xs text-muted">Demo only: template text, because drafting isn't built yet.</p>}
+        {API_MODE === 'mock' && <p className="mt-1 text-xs text-muted">Mock mode: simulated template text.</p>}
       </div>
 
       {plan.data && plan.data.status !== 'approved' ? (

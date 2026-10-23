@@ -96,7 +96,7 @@ Example (`"Hi, Maju here. The 20 chairs will come next week."`, sent from Maju's
     "unresolved_fields": ["...same as below..."]
   },
   "field_evidence": {
-    "supplier_id": "rules (no model used); confirmed by sender contact whatsapp:maju-rental (synthetic)",
+    "supplier_id": "found in the message (no AI used); confirmed by sender contact whatsapp:maju-rental (synthetic)",
     "original_arrival_date": "delivery DL-01 due date",
     "delivery_id": "open delivery for this supplier and item"
   },

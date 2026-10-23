@@ -59,7 +59,7 @@ def test_model_agrees_fills_every_field(snapshot):
     """M = R everywhere: filled, with 'agree' as the evidence."""
     result = combine(raw(), raw(), snapshot, REPORTED_AT, generated_by="model:mock")
     assert result.unresolved_fields == [] and not result.fallback_used
-    assert result.field_evidence["quantity_affected"] == "rules and AI model agree"
+    assert result.field_evidence["quantity_affected"] == "found in the message; the AI agrees"
     assert result.generated_by == "model:mock"
 
 
@@ -67,7 +67,7 @@ def test_model_gives_nothing_rules_value_is_used(snapshot):
     """R found, model silent: the rules' value fills the field."""
     result = combine(raw(), raw(quantity_affected=None), snapshot, REPORTED_AT)
     assert result.draft_incident.quantity_affected == 20
-    assert result.field_evidence["quantity_affected"] == "rules (AI model gave no value)"
+    assert result.field_evidence["quantity_affected"] == "found in the message (the AI gave no value)"
 
 
 def test_model_and_rules_disagree(snapshot):
@@ -108,7 +108,7 @@ def test_model_missing_flag_is_silence(snapshot):
     model = raw(new_arrival_date=None, flags=[RawFlag(field="new_arrival_date", reason="missing")])
     result = combine(raw(), model, snapshot, REPORTED_AT)
     assert result.draft_incident.new_arrival_date == date(2026, 10, 23)
-    assert result.field_evidence["new_arrival_date"] == "rules (AI model gave no value)"
+    assert result.field_evidence["new_arrival_date"] == "found in the message (the AI gave no value)"
 
 
 def test_unknown_supplier_name_from_model_is_unmatched(snapshot):

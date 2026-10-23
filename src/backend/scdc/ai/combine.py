@@ -138,7 +138,7 @@ def combine(
     if model is None:
         for item in merged.values():
             if item.value is not None:
-                item.source = "rules (no model used)"
+                item.source = "found in the message (no AI used)"
 
     apply_sender(merged["supplier_id"],
                  identify_sender(snapshot, contact_reference=sender, phone=from_number, contact_name=contact_name),
@@ -249,7 +249,7 @@ def merge(rules: Reading, model: Reading | None) -> Merged:
     if model is None:  # no model: rules only
         if r is not None and dr is not None:  # a value with a doubt: suggest it, as in the model branch
             return Merged(doubt=Doubt(dr.reason, dr.note, _union([_as_text(r)], dr.candidates), dr.raw_value))
-        return Merged(r, "rules") if r is not None else Merged(doubt=dr)
+        return Merged(r, "found in the message") if r is not None else Merged(doubt=dr)
 
     m, dm = model.value, model.doubt
     if dm is not None and dm.reason == UnresolvedReason.MISSING:  # "I don't know" is silence, not doubt
@@ -261,7 +261,8 @@ def merge(rules: Reading, model: Reading | None) -> Merged:
                                   _union([_as_text(r), _as_text(m)], flag_candidates)))
     if r is not None:  # m is None or equal to r
         if dr is None and dm is None:
-            return Merged(r, "rules and AI model agree" if m is not None else "rules (AI model gave no value)")
+            return Merged(r, "found in the message; the AI agrees" if m is not None
+                          else "found in the message (the AI gave no value)")
         worst = _worst(dr, dm)
         return Merged(doubt=Doubt(worst.reason, worst.note, _union([_as_text(r)], flag_candidates), worst.raw_value))
     if m is not None:  # only the model has a value

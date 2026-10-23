@@ -83,8 +83,8 @@ export function Plans() {
           <p>
             {names.humanize(ex.summary)} <AiBadge generatedBy={ex.generated_by} />
           </p>
-          {API_MODE !== 'real' && ex.generated_by === 'template' && (
-            <p className="mt-1 text-muted">Demo only: these notes are template text, because the AI explanation isn't built yet.</p>
+          {API_MODE === 'mock' && (
+            <p className="mt-1 text-muted">Mock mode: these notes are simulated template text.</p>
           )}
         </div>
       )}
