@@ -9,6 +9,7 @@ import { Impact } from './pages/Impact'
 import { PlanReview } from './pages/PlanReview'
 import { Plans } from './pages/Plans'
 import { ReportDisruption } from './pages/ReportDisruption'
+import { WhatsAppSimulator } from './pages/WhatsAppSimulator'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -20,6 +21,7 @@ const router = createBrowserRouter([
     children: [
       { path: '/', element: <Dashboard /> },
       { path: '/report', element: <ReportDisruption /> },
+      { path: '/whatsapp', element: <WhatsAppSimulator /> },
       { path: '/disruptions/:id/impact', element: <Impact /> },
       { path: '/disruptions/:id/plans', element: <Plans /> },
       { path: '/plans/:planId', element: <PlanReview /> },

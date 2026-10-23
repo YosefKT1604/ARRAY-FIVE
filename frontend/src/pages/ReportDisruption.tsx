@@ -1,9 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import incidentFixture from '../../../fixtures/demo/incident.json'
 import { ApiError } from '../api/errors'
-import { analyzeDisruption, createDisruption, extractDisruption, listDeliveries, listResources, listSuppliers } from '../api/endpoints'
+import {
+  analyzeDisruption,
+  createDisruption,
+  extractDisruption,
+  listDeliveries,
+  listResources,
+  listSuppliers,
+  listWhatsAppInbox,
+} from '../api/endpoints'
 import { AiBadge } from '../components/AiBadge'
 import { ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, btnSecondary, card, inputBase } from '../components/ui'
@@ -67,6 +75,21 @@ export function ReportDisruption() {
   const [form, setForm] = useState<FormState>(EMPTY)
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null)
   const [clientErrors, setClientErrors] = useState<Partial<Record<keyof FormState, string>>>({})
+
+  // Opened from the WhatsApp inbox (/report?message=WA-001): start from the reading stored when the message
+  // arrived, so the message is not read again. The owner still checks every field before reporting.
+  const [searchParams] = useSearchParams()
+  const messageId = searchParams.get('message')
+  const inbox = useQuery({ queryKey: ['whatsapp-inbox'], queryFn: listWhatsAppInbox, enabled: messageId != null })
+  const inboxMessage = inbox.data?.items.find((m) => m.id === messageId)
+  const [loadedMessageId, setLoadedMessageId] = useState<string | null>(null)
+  if (inboxMessage && loadedMessageId !== inboxMessage.id) {
+    setLoadedMessageId(inboxMessage.id)
+    setMessage(inboxMessage.text)
+    setFromContact(inboxMessage.from_contact ?? inboxMessage.contact_name ?? inboxMessage.from_number ?? '')
+    setExtraction(inboxMessage.extraction)
+    setForm(prefill(inboxMessage.extraction))
+  }
 
   const extract = useMutation({
     mutationFn: (text: string) => extractDisruption(text, fromContact),
@@ -169,6 +192,22 @@ export function ReportDisruption() {
         <h1 className="text-3xl font-semibold">Report a problem</h1>
         <p className="mt-1 text-muted">Tell us what went wrong. Nothing is sent to anyone.</p>
       </div>
+
+      {messageId && inbox.isLoading && <LoadingState label="Loading the WhatsApp message…" />}
+      {messageId && inbox.error && <ErrorPanel error={inbox.error} />}
+      {messageId && inbox.data && !inboxMessage && (
+        <p role="alert" className="rounded-xl bg-warn-bg p-3 text-sm text-warn">
+          WhatsApp message {messageId} was not found. You can still fill in the form yourself.
+        </p>
+      )}
+      {inboxMessage && (
+        <p role="status" className="rounded-xl bg-info-bg p-3 text-sm">
+          Filled in from WhatsApp message {inboxMessage.id}.{' '}
+          <Link to="/whatsapp" className="font-semibold text-brand underline">
+            Back to the inbox
+          </Link>
+        </p>
+      )}
 
       <section className={card}>
         <h2 className="text-lg font-semibold">1. Paste the supplier's message (optional)</h2>

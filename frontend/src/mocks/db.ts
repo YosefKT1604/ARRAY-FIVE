@@ -15,6 +15,7 @@ import type {
   Disruption,
   DisruptionCreate,
   ImpactResult,
+  IncomingMessage,
   Incident,
   RecoveryPlan,
 } from '../types/contracts'
@@ -43,7 +44,9 @@ interface MockState {
   activity: ActivityLogEntry[]
   /** Drafts by plan id (mock only: drafting is Person 5's, not built yet). */
   drafts: Record<string, DraftMessage[]>
-  counters: { disruption: number; plan: number; approval: number; log: number; draft: number }
+  /** WhatsApp messages sent from the simulator (mock mode only), oldest first. */
+  inbox: IncomingMessage[]
+  counters: { disruption: number; plan: number; approval: number; log: number; draft: number; message: number }
 }
 
 function fresh(): MockState {
@@ -56,7 +59,8 @@ function fresh(): MockState {
     demoDecided: [],
     activity: [],
     drafts: {},
-    counters: { disruption: 0, plan: 0, approval: 0, log: 0, draft: 0 },
+    inbox: [],
+    counters: { disruption: 0, plan: 0, approval: 0, log: 0, draft: 0, message: 0 },
   }
 }
 
@@ -195,6 +199,10 @@ export function logMock(
 
 export function nextDraftId() {
   return `DM-${pad(++state.counters.draft)}`
+}
+
+export function nextMessageId() {
+  return `WA-${pad(++state.counters.message)}`
 }
 
 export function nextApprovalId() {

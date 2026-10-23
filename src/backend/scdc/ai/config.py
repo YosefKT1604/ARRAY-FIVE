@@ -86,6 +86,11 @@ def demo_now(env: Mapping[str, str] | None = None, *, dotenv_path: Path | None =
     return value
 
 
+def setting(name: str, env: Mapping[str, str] | None = None, *, dotenv_path: Path | None = DOTENV_PATH) -> str | None:
+    """One setting read the same way as the AI settings (.env file, real environment wins); None if empty."""
+    return (_settings(env, dotenv_path).get(name) or "").strip() or None
+
+
 def _settings(env: Mapping[str, str] | None, dotenv_path: Path | None) -> dict[str, str]:
     """All settings: `env` if given, else the .env file overlaid by the real environment (which wins)."""
     return dict(env) if env is not None else {**_read_dotenv(dotenv_path), **os.environ}

@@ -7,6 +7,7 @@ import type {
   Disruption,
   DraftMessage,
   ErrorCode,
+  IncomingMessageCreate,
   PlanEditRequest,
   RecoveryPlan,
 } from '../types/contracts'
@@ -25,6 +26,7 @@ import { buildDrafts } from './drafts'
 import { mockEdit } from './edit'
 import { buildExplanation } from './explanation'
 import { mockExtract } from './extract'
+import { mockReceive } from './whatsapp'
 
 const url = (path: string) => `${API_BASE}${path}`
 
@@ -225,6 +227,17 @@ export const mockedBackendHandlers: RequestHandler[] = [
     const { message, from_contact } = (await request.json()) as { message: string; from_contact?: string | null }
     return HttpResponse.json(mockExtract(message, from_contact ?? null))
   }),
+
+  http.post(url('/whatsapp/messages'), async ({ request }) => {
+    const body = (await request.json()) as IncomingMessageCreate
+    if (!body.text)
+      return HttpResponse.json(
+        { type: 'about:blank', title: 'Unprocessable Content', status: 422, detail: 'Validation failed', instance: '/whatsapp/messages', code: 'VALIDATION_ERROR', errors: [{ loc: ['body', 'text'], msg: 'Type a message', type: 'value_error' }] },
+        { status: 422, headers: { 'Content-Type': 'application/problem+json' } },
+      )
+    return HttpResponse.json(mockReceive(body), { status: 201 })
+  }),
+  http.get(url('/whatsapp/inbox'), () => HttpResponse.json({ items: [...state.inbox].reverse() })),
 
   http.get(url('/disruptions/:id/explanation'), async ({ params, request }) => {
     const plans = await resolvePlans(params.id as string, request)

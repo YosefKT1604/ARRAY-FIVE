@@ -13,6 +13,8 @@ import type {
   DraftMessage,
   Explanation,
   ExtractionResult,
+  IncomingMessage,
+  IncomingMessageCreate,
   ImpactResult,
   Job,
   PendingDecision,
@@ -48,6 +50,11 @@ export const rejectPlan = (id: string, body: DecisionRequest) =>
 export const getActivityLog = (id: string) => request<Items<ActivityLogEntry>>('GET', `/disruptions/${id}/activity-log`)
 export const requestInfo = (id: string, body: DecisionRequest) =>
   request<Approval>('POST', `/recovery-plans/${id}/request-info`, body)
+
+// P5's WhatsApp inbox (branch `integration`). Messages come from the in-app simulator for now.
+export const sendWhatsAppMessage = (body: IncomingMessageCreate) =>
+  request<IncomingMessage>('POST', '/whatsapp/messages', body)
+export const listWhatsAppInbox = () => request<Items<IncomingMessage>>('GET', '/whatsapp/inbox')
 
 // ---- Not built yet: answered by MSW in hybrid mode (see mocks/missing-endpoints.ts) ----
 export const extractDisruption = (message: string, from_contact?: string) =>

@@ -4,7 +4,7 @@ import { getDashboard } from '../api/endpoints'
 import { DisruptionStatusBadge, StatusBadge } from '../components/StatusBadge'
 import { PlanCost } from '../components/PlanCost'
 import { EmptyState, ErrorPanel, LoadingState } from '../components/states'
-import { btnPrimary, card } from '../components/ui'
+import { btnPrimary, btnSecondary, card } from '../components/ui'
 import { formatDate, relativeDay, relativeTime } from '../lib/format'
 import { useNames } from '../lib/useNames'
 import type { Disruption, PendingDecision } from '../types/contracts'
@@ -79,9 +79,14 @@ export function Dashboard() {
           <h1 className="text-3xl font-semibold">Today at Seri Kenanga Events</h1>
           <p className="mt-1 text-muted">What's coming up, what's gone wrong, and what needs your decision.</p>
         </div>
-        <Link to="/report" className={btnPrimary}>
-          Report a problem
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link to="/whatsapp" className={btnSecondary}>
+            WhatsApp (simulated)
+          </Link>
+          <Link to="/report" className={btnPrimary}>
+            Report a problem
+          </Link>
+        </div>
       </section>
 
       {isLoading && <LoadingState label="Loading your dashboard…" />}

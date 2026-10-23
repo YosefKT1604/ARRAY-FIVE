@@ -50,6 +50,34 @@ export interface ExtractionResult {
   warnings: string[]
 }
 
+/** POST /whatsapp/messages body: a message as the chat app delivers it (P5, branch `integration`). */
+export interface IncomingMessageCreate {
+  text: string
+  from_number?: string | null
+  /** The name the owner saved for the number in their own phone (not the sender's profile name). */
+  contact_name?: string | null
+  /** Matched against Supplier.contact_reference, e.g. "whatsapp:maju-rental (synthetic)". */
+  from_contact?: string | null
+}
+
+/** A stored WhatsApp message with the AI module's reading of it, made once on arrival. */
+export interface IncomingMessage {
+  id: string
+  channel: string
+  received_at: string
+  text: string
+  from_number: string | null
+  contact_name: string | null
+  from_contact: string | null
+  extraction: ExtractionResult
+  /** The disruption a complete reading was filed as automatically ("filed"), or the open one it repeats
+   *  ("duplicate"). null = the message waits for the owner to check it. */
+  disruption_id: string | null
+  report_outcome: 'filed' | 'duplicate' | null
+  /** The fixed acknowledgement the sender gets back; never AI text. */
+  reply: string
+}
+
 export interface PlanComparison {
   plan_id: string
   validation_status: ValidationStatus
