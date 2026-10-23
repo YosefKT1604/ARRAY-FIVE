@@ -7,7 +7,7 @@ SCDC: an AI-assisted disruption-recovery tool for Malaysian small businesses. Co
 I own `frontend/` only. Do not edit `src/backend/`, `docs/`, or `fixtures/` without asking.
 
 ## Source of truth (read before coding)
-- **The real backend (Person 2)** in this repo at `../src/backend`, run locally at `http://localhost:8000` (from `srcackend`: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`). Its OpenAPI schema (`http://localhost:8000/openapi.json`) is what the frontend actually talks to. **Generate TS types from it** with `openapi-typescript` into `src/types/api.generated.ts`. Never hand-edit that file; regenerate it with `npm run gen:api`.
+- **The real backend (Person 2)** in this repo at `../src/backend`, run locally at `http://localhost:8000` (from `src\backend`: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`). Its OpenAPI schema (`http://localhost:8000/openapi.json`) is what the frontend actually talks to. **Generate TS types from it** with `openapi-typescript` into `src/types/api.generated.ts`. Never hand-edit that file; regenerate it with `npm run gen:api`.
 - `../docs/CONTRACTS.md` — the agreed intent: enums, error format (§8), the demo scenario (§9), and endpoints P2 hasn't built yet.
 - `../fixtures/demo/*.json` — the demo scenario. Mock responses must be built from these files, not retyped by hand.
 - If the backend and CONTRACTS.md disagree, **don't silently pick one**. Record it in `frontend/INTEGRATION_GAPS.md` (endpoint, contract says, backend does, impact on UI) and ask me. Default: follow the real backend for what exists, and the contract for what's missing.
