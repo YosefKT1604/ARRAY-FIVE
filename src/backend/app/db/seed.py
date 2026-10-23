@@ -18,6 +18,7 @@ from app.models.supplier import Supplier, SupplierOffering
 from app.models.activity_log import ActivityLog  # noqa: F401
 from app.models.approval import Approval  # noqa: F401
 from app.models.disruption import Disruption  # noqa: F401
+from app.models.draft import DraftMessageRecord  # noqa: F401
 from app.models.recovery_plan import RecoveryPlanRecord  # noqa: F401
 
 SEED_FILE = Path(__file__).resolve().parents[4] / "fixtures" / "demo" / "seed.json"

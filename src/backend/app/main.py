@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from app.db.seed import seed_if_empty
 from app.errors import register_error_handlers
-from app.routers import health, resource, dependency, job, supplier, delivery, disruption, recovery_plan
+from app.routers import health, resource, dependency, job, supplier, delivery, disruption, recovery_plan, ai
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,3 +21,4 @@ app.include_router(supplier.router, prefix="/api/v1")
 app.include_router(delivery.router, prefix="/api/v1")
 app.include_router(disruption.router, prefix="/api/v1")
 app.include_router(recovery_plan.router, prefix="/api/v1")
+app.include_router(ai.router, prefix="/api/v1")

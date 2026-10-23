@@ -6,8 +6,10 @@
     SCDC_AI_API_KEY      optional key; if empty, LiteLLM uses the provider's usual variable (ANTHROPIC_API_KEY)
     SCDC_AI_TIMEOUT_S    seconds before a call is abandoned (default 20)
     SCDC_AI_MAX_TOKENS   upper limit on output tokens per call (default 1500)
+    SCDC_DEMO_NOW        optional fixed "now" for the demo, with an offset, e.g. "2026-10-20T10:15:00+08:00";
+                         messages are read as if received then. Empty (default) = the real clock.
 
-On a PC, put these in `backend/.env` (git-ignored). On Replit, put them in Secrets. Real environment
+On a PC, put these in `src/backend/.env` (git-ignored). On Replit, put them in Secrets. Real environment
 variables win over the .env file. The default is "none", so the whole app works without any key.
 """
 
@@ -15,12 +17,13 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Mapping
 
 from .adapter import ModelAdapter, NoModelAdapter
 
-DOTENV_PATH = Path(__file__).resolve().parents[2] / ".env"   # backend/.env
+DOTENV_PATH = Path(__file__).resolve().parents[2] / ".env"   # src/backend/.env
 PROVIDERS = ("none", "litellm")
 
 
@@ -42,7 +45,7 @@ class AIConfig:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None, *, dotenv_path: Path | None = DOTENV_PATH) -> "AIConfig":
         """Read the SCDC_AI_* settings: from `env` if given, else from the .env file and the real environment."""
-        values = dict(env) if env is not None else {**_read_dotenv(dotenv_path), **os.environ}
+        values = _settings(env, dotenv_path)
 
         def get(name: str) -> str | None:
             """One setting, with surrounding spaces removed; None if missing or empty."""
@@ -63,6 +66,29 @@ class AIConfig:
         if config.provider == "litellm" and not config.model:
             raise AIConfigError("SCDC_AI_PROVIDER=litellm needs SCDC_AI_MODEL, e.g. anthropic/claude-haiku-5-5.")
         return config
+
+
+def demo_now(env: Mapping[str, str] | None = None, *, dotenv_path: Path | None = DOTENV_PATH) -> datetime | None:
+    """The fixed demo time from SCDC_DEMO_NOW, or None when it is not set (use the real clock).
+
+    The value must be an ISO date and time with an offset ("2026-10-20T10:15:00+08:00"): without the
+    offset it is unclear which day it is in Malaysia, so that is rejected like any other bad value.
+    """
+    raw = (_settings(env, dotenv_path).get("SCDC_DEMO_NOW") or "").strip()
+    if not raw:
+        return None
+    try:
+        value = datetime.fromisoformat(raw)
+    except ValueError:
+        raise AIConfigError(f"SCDC_DEMO_NOW must be like 2026-10-20T10:15:00+08:00, not '{raw}'.") from None
+    if value.tzinfo is None:
+        raise AIConfigError(f"SCDC_DEMO_NOW needs a time zone offset, e.g. '{raw}+08:00'.")
+    return value
+
+
+def _settings(env: Mapping[str, str] | None, dotenv_path: Path | None) -> dict[str, str]:
+    """All settings: `env` if given, else the .env file overlaid by the real environment (which wins)."""
+    return dict(env) if env is not None else {**_read_dotenv(dotenv_path), **os.environ}
 
 
 def _read_dotenv(path: Path | None) -> dict[str, str]:

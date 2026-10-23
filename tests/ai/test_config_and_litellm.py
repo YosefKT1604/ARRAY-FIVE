@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from scdc.ai.adapter import ModelOutputError, ModelRequest, ModelTimeoutError, ModelUnavailableError, NoModelAdapter, call_model
-from scdc.ai.config import AIConfig, AIConfigError, get_adapter
+from scdc.ai.config import AIConfig, AIConfigError, demo_now, get_adapter
 from scdc.ai.extraction import extract_incident
 from scdc.ai.litellm_adapter import LiteLLMAdapter
 from scdc.ai.schemas import RawExtraction
@@ -87,6 +87,21 @@ def test_dotenv_file_and_environment(tmp_path, monkeypatch):
     config = AIConfig.from_env(dotenv_path=dotenv)
     assert (config.provider, config.model, config.timeout_s) == ("litellm", "anthropic/claude-haiku-5-5", 12.0)
     assert "SCDC_AI_MODEL" not in __import__("os").environ
+
+
+def test_demo_clock_setting():
+    """SCDC_DEMO_NOW pins "now" (offset kept); empty or missing means the real clock (None)."""
+    assert demo_now({"SCDC_DEMO_NOW": " 2026-10-20T10:15:00+08:00 "}) == datetime(
+        2026, 10, 20, 10, 15, tzinfo=timezone(timedelta(hours=8)))
+    assert demo_now({"SCDC_DEMO_NOW": ""}) is None
+    assert demo_now({}) is None
+
+
+@pytest.mark.parametrize("raw", ["20 Oct 2026", "2026-10-20T10:15:00"])
+def test_demo_clock_rejects_bad_values(raw):
+    """A value that is not ISO, or has no offset (which day in Malaysia?), is a configuration error."""
+    with pytest.raises(AIConfigError):
+        demo_now({"SCDC_DEMO_NOW": raw})
 
 
 # --- The adapter -----------------------------------------------------------------------------------
