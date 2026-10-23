@@ -1,0 +1,23 @@
+# Replit config (format per docs.replit.com "Configuring your Repl": modules, [run], [run.env],
+# [[ports]], [deployment]). Secrets (AI settings) go in Replit Secrets, never in this file.
+modules = ["python-3.13", "nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[run]
+args = ["bash", "scripts/start.sh"]
+
+# Non-secret demo date. The docs only describe [run.env]; scripts/start.sh sets the same default,
+# so published deployments get it too.
+[run.env]
+SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "cloudrun"
+build = ["bash", "scripts/build.sh"]
+run = ["bash", "scripts/start.sh"]
