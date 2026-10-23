@@ -1,0 +1,105 @@
+{
+  "_note": "Module B evaluation set (v2 step 3e). Data: the demo in fixtures/demo/ (incident D-001, expected_impact.json, expected_plans.json, seed.json as snapshot). Each case is a scripted model reply: `model_reply` in full, or `based_on` a clean reply with `override` items (path -> text; a path that does not exist is added). Paths: 'summary', 'impact/<entity_id>', '<plan_id>/benefits/<key>', '<plan_id>/limitations/<key>', or '<plan_id>' for a whole invented plan. `bad_items` are the planted false or invented items: none may reach the final explanation (a 'leak'). Every other item in the reply is true to the data: replacing it is a 'false alarm' (reported only). `model_reply_text` / `model_error` simulate broken replies; `expected_fallback` = the template must be returned.",
+  "clean_replies": {
+    "C01": {
+      "summary": "Maju Rental Supplies will send only 20 of the 40 chairs tomorrow; the other 20 arrive on Friday. J-01 and J-02 on Thursday are short of chairs. RP-001 is the only feasible plan.",
+      "impact_explanations": [
+        {"entity_id": "J-01", "text": "The wedding on Thursday needs 50 chairs, but the shared pool is short by 20 that day."},
+        {"entity_id": "J-02", "text": "The seminar on Thursday needs 20 chairs from the same short pool."},
+        {"entity_id": "CM-01", "text": "The wedding setup cannot be moved to another day."}
+      ],
+      "plan_comparisons": [
+        {"plan_id": "RP-001",
+         "benefits": [
+           {"source": "SUPPLIER_AVAILABLE", "text": "Cahaya Event Rentals has confirmed 25 chairs."},
+           {"source": "DEADLINE_MET", "text": "The chairs arrive tomorrow, before the events on Thursday."},
+           {"source": "cost", "text": "Costs RM 80.00."}
+         ]},
+        {"plan_id": "RP-002",
+         "benefits": [{"source": "cost", "text": "Cheaper, at RM 56.00."}],
+         "limitations": [
+           {"source": "LEAD_TIME_OK", "text": "Delima needs 3 days to deliver."},
+           {"source": "DEADLINE_MET", "text": "Delima's chairs would only arrive on Friday, after the events."}
+         ]},
+        {"plan_id": "RP-003",
+         "limitations": [
+           {"source": "SUPPLIER_AVAILABLE", "text": "Maju has not yet confirmed it can deliver faster."},
+           {"source": "FACTS_KNOWN", "text": "It depends on Maju's confirmation."},
+           {"source": "assumption:1", "text": "This only works if Maju can bring the remaining 20 chairs by tomorrow."}
+         ]}
+      ]
+    },
+    "C02": {
+      "summary": "Only 20 of the 40 chairs from Maju Rental Supplies arrive on 21 Oct; the rest come on 23 Oct. The events on 22 Oct are 20 chairs short. Of the 3 plans, only RP-001 passed every check.",
+      "impact_explanations": [
+        {"entity_id": "R-01", "text": "Only 50 chairs are available on 22 Oct, but 70 are needed."},
+        {"entity_id": "CM-02", "text": "The seminar setup depends on J-02 and cannot be rescheduled."}
+      ],
+      "plan_comparisons": [
+        {"plan_id": "RP-001",
+         "benefits": [
+           {"source": "QUANTITY_SUFFICIENT", "text": "With 20 more chairs you have the 70 you need."},
+           {"source": "LEAD_TIME_OK", "text": "Cahaya delivers in 1 day, on 21 Oct."}
+         ]},
+        {"plan_id": "RP-002",
+         "limitations": [{"source": "DEADLINE_MET", "text": "Arriving on 23 Oct is too late for the 22 Oct events."}]}
+      ]
+    }
+  },
+  "cases": [
+    {"id": "X01", "category": "clean", "based_on": "C01", "bad_items": []},
+    {"id": "X02", "category": "clean", "based_on": "C02", "bad_items": []},
+    {"id": "X03", "category": "wrong_number", "based_on": "C01",
+     "override": {"impact/J-01": "The wedding is short by 25 chairs on Thursday."},
+     "bad_items": ["impact/J-01"]},
+    {"id": "X04", "category": "wrong_date", "based_on": "C01",
+     "override": {"RP-001/benefits/DEADLINE_MET": "The chairs arrive on 24 Oct."},
+     "bad_items": ["RP-001/benefits/DEADLINE_MET"]},
+    {"id": "X05", "category": "wrong_weekday", "based_on": "C01",
+     "override": {"RP-002/limitations/DEADLINE_MET": "Delima's chairs arrive on Saturday."},
+     "bad_items": ["RP-002/limitations/DEADLINE_MET"]},
+    {"id": "X06", "category": "money_from_other_plan", "based_on": "C01",
+     "override": {"RP-002/benefits/cost": "Costs RM 80.00."},
+     "bad_items": ["RP-002/benefits/cost"]},
+    {"id": "X07", "category": "invented_record", "based_on": "C01",
+     "override": {"summary": "Maju Rental Supplies will send only 20 of the 40 chairs tomorrow. J-01, J-02 and J-04 are short of chairs."},
+     "bad_items": ["summary"]},
+    {"id": "X08", "category": "invented_name", "based_on": "C01",
+     "override": {"RP-001/benefits/SUPPLIER_AVAILABLE": "Bintang Rentals has confirmed 25 chairs."},
+     "bad_items": ["RP-001/benefits/SUPPLIER_AVAILABLE"]},
+    {"id": "X09", "category": "infeasible_praised", "based_on": "C01",
+     "override": {"RP-002/benefits/cost": "The cheapest and best option at RM 56.00."},
+     "bad_items": ["RP-002/benefits/cost"]},
+    {"id": "X10", "category": "unconfirmed_approved", "based_on": "C01",
+     "override": {"RP-003/limitations/assumption:1": "Approve this now; Maju can bring the remaining 20 chairs by tomorrow."},
+     "bad_items": ["RP-003/limitations/assumption:1"]},
+    {"id": "X11", "category": "feasible_doubted", "based_on": "C01",
+     "override": {"RP-001/benefits/SUPPLIER_AVAILABLE": "Cahaya Event Rentals has not yet confirmed the chairs."},
+     "bad_items": ["RP-001/benefits/SUPPLIER_AVAILABLE"]},
+    {"id": "X12", "category": "over_claim", "based_on": "C01",
+     "override": {"RP-001/benefits/DEADLINE_MET": "Delivery before Thursday is guaranteed."},
+     "bad_items": ["RP-001/benefits/DEADLINE_MET"]},
+    {"id": "X13", "category": "impact_contradiction", "based_on": "C01",
+     "override": {"impact/CM-01": "The wedding setup is not affected."},
+     "bad_items": ["impact/CM-01"]},
+    {"id": "X14", "category": "vague_date", "based_on": "C01",
+     "override": {"RP-003/limitations/assumption:1": "Maju might bring the remaining 20 chairs next week."},
+     "bad_items": ["RP-003/limitations/assumption:1"]},
+    {"id": "X15", "category": "tricky_negation", "based_on": "C01",
+     "override": {"RP-002/benefits/cost": "Not just cheap at RM 56.00, it is also feasible."},
+     "bad_items": ["RP-002/benefits/cost"]},
+    {"id": "X16", "category": "tricky_negation", "based_on": "C01",
+     "override": {"summary": "Do not wait: RP-003 is the best option."},
+     "bad_items": ["summary"]},
+    {"id": "X20", "category": "tricky_negation", "based_on": "C01",
+     "override": {"RP-002/benefits/cost": "Not cheap, but feasible."},
+     "bad_items": ["RP-002/benefits/cost"]},
+    {"id": "X17", "category": "invented_items", "based_on": "C01",
+     "override": {"impact/J-09": "J-09 is also short of chairs.", "RP-001/benefits/SPEED": "Very fast delivery.",
+                  "RP-009": "A secret extra plan."},
+     "bad_items": ["impact/J-09", "RP-001/benefits/SPEED", "RP-009"]},
+    {"id": "X18", "category": "malformed_reply", "model_reply_text": "Here is your explanation: RP-002 is the best!",
+     "expected_fallback": true, "bad_items": []},
+    {"id": "X19", "category": "model_unavailable", "model_error": "timeout", "expected_fallback": true, "bad_items": []}
+  ]
+}
