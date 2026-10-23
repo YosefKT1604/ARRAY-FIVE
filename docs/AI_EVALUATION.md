@@ -12,7 +12,8 @@ do not yet show. It is written for the team and for anyone judging the project. 
 | B. Explanation | impact + plans → plain-language explanation | 20 | **0 false claims shown** (18/18 caught) | 212/212 correct items kept, 0 false alarms |
 | C. Drafts | approved plan → supplier/customer messages | 18 | **0 unsafe drafts** (11/11 caught) | 4/4 good polishes kept, 0 false alarms |
 
-Plus 355 automated tests (`pytest`), which include every case above and run with no network and no API key.
+Plus 377 automated tests for the AI module (`pytest`; 496 in the whole backend), which include every case above
+and run with no network and no API key.
 
 **Not yet measured:** a real AI model. All model replies in these evaluations are scripted (section 6). The
 live check against a real model runs at deployment on Replit (section 8).
@@ -196,13 +197,14 @@ wrong values. The X16 fix closed the only leak found.
 
 ## 7. How to reproduce
 
-From `backend/`, on Windows PowerShell (no key, no network):
+From the repository root, on Windows PowerShell (no key, no network; setup in the root `README.md`):
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q                      # 355 tests, including every case
-.\.venv\Scripts\python.exe -m scdc.ai.eval.extraction         # per-case table + totals for Module A
-.\.venv\Scripts\python.exe -m scdc.ai.eval.explanation        # Module B
-.\.venv\Scripts\python.exe -m scdc.ai.eval.drafts             # Module C
+.\src\backend\.venv\Scripts\python.exe -m pytest -q tests/ai          # 377 tests, including every case
+$env:PYTHONPATH = "src/backend"
+.\src\backend\.venv\Scripts\python.exe -m scdc.ai.eval.extraction      # per-case table + totals for Module A
+.\src\backend\.venv\Scripts\python.exe -m scdc.ai.eval.explanation     # Module B
+.\src\backend\.venv\Scripts\python.exe -m scdc.ai.eval.drafts          # Module C
 ```
 
 Each command prints one line per case and the totals, and exits with an error code if any safety rule fails.

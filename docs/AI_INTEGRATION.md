@@ -1,8 +1,9 @@
 # SCDC AI module: integration guide
 
-The AI module (`backend/scdc/ai/`, Person 5) turns supplier messages into draft incidents, explains impact and
-recovery plans in plain language, and drafts supplier/customer messages. It is written for the backend
-(Person 2), and summarises the safety design for anyone reviewing the project.
+The AI module (`src/backend/scdc/ai/`, Person 5) turns supplier messages into draft incidents, explains impact
+and recovery plans in plain language, and drafts supplier/customer messages. It runs inside Person 2's backend
+behind four HTTP endpoints (section 2), and this guide also summarises the safety design for anyone reviewing
+the project.
 
 **The rule behind every part:** the AI may *read* and *word* things, never *decide* them. Deterministic code
 checks every model output against the business data. Nothing the model writes is shown as a fact unless it is
@@ -10,12 +11,15 @@ backed by the data, and every module works with no model at all.
 
 ## 1. Quick start
 
+From the repository root (Windows PowerShell; the root `README.md` also shows the `uv` way):
+
 ```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"        # no AI library needed
-.\.venv\Scripts\python.exe -m pytest -q                       # 355 tests, no network, no API key
+py -3.13 -m venv src\backend\.venv
+.\src\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest   # no AI library needed
+.\src\backend\.venv\Scripts\python.exe -m pytest -q    # 496 backend tests (377 for this module); no network, no key
 ```
+
+Inside the backend, `app/services/ai.py` calls the module; other Python code can call it directly:
 
 ```python
 from scdc.ai.config import get_adapter
@@ -32,7 +36,8 @@ drafts = draft_messages(approved_plan, incident, snapshot, adapter=adapter)
 ```
 
 All three are pure functions: no database, no HTTP, no global state. Inputs and outputs are Pydantic models
-from `scdc/ai/schemas.py` (local copies of `docs/CONTRACTS.md`; see section 9).
+from `scdc/ai/schemas.py` (the module's own copies of the `docs/CONTRACTS.md` shapes; P2's `contracts` objects
+are converted by `scdc/ai/bridge.py`, see section 9).
 
 ## 2. Where it fits in the workflow
 
@@ -42,11 +47,23 @@ message ──► extract_incident ──► owner confirms form ──► valid
             draft_messages ◄── owner approves a plan ◄── explain ◄── plans + validation (P4)
 ```
 
-| Function | Called when | Returns | Model calls |
+| Function | Endpoint (base `/api/v1`) | Returns | Model calls |
 |---|---|---|---|
-| `extract_incident` | a supplier message arrives (optional step; the form also works alone) | `ExtractionResult`: a form **prefill**, never a confirmed incident | 1 |
-| `explain` | after P4 has validated and ranked the plans | `Explanation` (CONTRACTS §6.6) | 1 |
-| `draft_messages` | after the owner **approves** a plan | `list[DraftMessage]` (CONTRACTS §6.7) | 1 per message |
+| `extract_incident` | `POST /disruptions/extract`: a supplier message arrives (optional step; the form also works alone) | `ExtractionResult`: a form **prefill**, never a confirmed incident | 1 |
+| `explain` | `GET /disruptions/{id}/explanation`: after the plans are made | `Explanation` (CONTRACTS §6.6) | 1 |
+| `draft_messages` | `POST /recovery-plans/{id}/drafts`: after the owner **approves** a plan | `list[DraftMessage]` (CONTRACTS §6.7) | 1 per message |
+
+### HTTP endpoints
+
+Code: `app/routers/ai.py` (endpoints) and `app/services/ai.py` (snapshot, conversion, storage, activity log).
+Every endpoint works without a model; errors use P2's format (Problem Details with a `code`).
+
+| Endpoint | Request | Response | Errors and rules |
+|---|---|---|---|
+| `POST /disruptions/extract` | `{"message": "...", "from_contact": "whatsapp:maju-rental (synthetic)"}` (`from_contact` optional) | `ExtractionResult` | Stores nothing. `from_contact` is matched against `Supplier.contact_reference`. "Tomorrow"/"Friday" are read from the report time (`SCDC_DEMO_NOW` if set, else now in Malaysia) |
+| `GET /disruptions/{id}/explanation` | — | `Explanation` | 404 unknown disruption; 409 `INVALID_STATE_TRANSITION` before analysis; 200 once analyzed, also before plans exist. Built fresh on each request |
+| `POST /recovery-plans/{id}/drafts` | — (optional `X-User-Id`, for the log) | 201 `{"items": [DraftMessage]}` | 404 unknown plan; 409 `INVALID_STATE_TRANSITION` unless the plan is `approved`. Drafts are stored (`draft_messages` table); asking again returns the same drafts. Logged as `draft_created` |
+| `POST /drafts/{id}/approve` | header `X-User-Id` | `DraftMessage` with `status: "approved"` | 401 no or unknown user; 403 not the owner; 404 unknown draft. Approving twice is fine. Logged as `draft_approved`. **Nothing is ever sent** |
 
 ## 3. The functions
 
@@ -75,8 +92,8 @@ details are **never sent to the model**. It then works exactly like `extract_inc
 | `message: str` | the supplier's message, English |
 | `snapshot: BusinessSnapshot` | the business records (suppliers, resources, deliveries...) used to resolve names to IDs |
 | `reported_at: datetime` | when the message arrived (with time zone); "tomorrow", "Friday" are resolved from it |
-| `sender: str \| None` | **new, optional**: the sender's contact reference (e.g. `"whatsapp:maju-rental (synthetic)"`). If it equals a supplier's `contact_reference`, it identifies or confirms the supplier |
-| `from_number`, `contact_name` | **new, optional**: the sender's phone and the owner's saved name for it (as in `IncomingMessage`) |
+| `sender: str \| None` | optional (an addition to CONTRACTS §5; the endpoint's `from_contact`): the sender's contact reference (e.g. `"whatsapp:maju-rental (synthetic)"`). If it equals a supplier's `contact_reference`, it identifies or confirms the supplier |
+| `from_number`, `contact_name` | optional (an addition to CONTRACTS §5): the sender's phone and the owner's saved name for it (as in `IncomingMessage`) |
 | `adapter` | from `get_adapter()`; `None` = no model (rules only) |
 
 How it works: a rule-based reader and the model both read the message; code combines the two readings field
@@ -125,7 +142,7 @@ becomes the `NormalizedIncident`.
 | `incident: NormalizedIncident` | the confirmed incident |
 | `impact: ImpactResult` | P3's analysis |
 | `plans: list[RecoveryPlan]` | P4's plans **with** their `validation` filled |
-| `snapshot` | **new, optional**: business records, so texts can say "Cahaya Event Rentals (S-02)" instead of "S-02" |
+| `snapshot` | optional (an addition to CONTRACTS §5; the endpoint always passes it): business records, so texts can say "Cahaya Event Rentals (S-02)" instead of "S-02" |
 
 How it works: code always builds a complete template explanation from the data. The model writes its own
 version from the facts; each item (summary, one impact text, one benefit, one limitation) is checked by the
@@ -186,8 +203,8 @@ adds no commitment words ("confirmed", "guaranteed", "booked"...).
 }
 ```
 
-Drafts are **never sent** by the system. IDs are numbered `DM-001`, `DM-002`... per call; renumber when storing
-if needed.
+Drafts are **never sent** by the system. The function numbers each call's drafts `DM-001`, `DM-002`...; the
+backend renumbers them when storing, so IDs are unique across the database.
 
 ## 4. Uncertainty handling (no confidence scores)
 
@@ -225,12 +242,14 @@ A failed reply never raises: it becomes a fallback (section 7).
 | `SCDC_AI_API_KEY` | | optional key; if empty, the provider's usual variable is used (e.g. `ANTHROPIC_API_KEY`) |
 | `SCDC_AI_TIMEOUT_S` | 20 | seconds before a call is abandoned |
 | `SCDC_AI_MAX_TOKENS` | 1500 | output token limit per call |
+| `SCDC_DEMO_NOW` | | optional fixed "now" with an offset, e.g. `2026-10-20T08:00:00+08:00` (the demo day). Used as the report time for extraction, and by the backend for a new disruption's `reported_at` and the snapshot date the impact engine measures from. Empty = the real clock. Audit times (activity log, approvals) always stay real |
 
-- **Where to set them:** on a PC in `backend/.env` (git-ignored; copy `backend/.env.example`); on Replit in
-  **Secrets**. Real environment variables win over `.env`. An invalid setting raises `AIConfigError` at start-up.
-- **Live provider:** LiteLLM, optional extra `pip install -e ".[llm]"`, pinned **exactly** to `litellm==1.100.5`
-  (versions 1.82.7 and 1.82.8 were compromised on PyPI in March 2026; upgrade only deliberately). LiteLLM is
-  imported only on the first real call; if it cannot load, the module falls back as if the model were down.
+- **Where to set them:** on a PC in `src/backend/.env` (git-ignored; copy `src/backend/.env.example`); on Replit
+  in **Secrets**. Real environment variables win over `.env`. An invalid setting raises `AIConfigError`.
+- **Live provider:** LiteLLM, declared as the optional `llm` group in `src/backend/pyproject.toml` and pinned
+  **exactly** to `litellm==1.100.5` (versions 1.82.7 and 1.82.8 were compromised on PyPI in March 2026; upgrade
+  only deliberately). Install with `uv sync --extra llm`, or with pip: `pip install "litellm==1.100.5"`. LiteLLM
+  is imported only on the first real call; if it cannot load, the module falls back as if the model were down.
 - **Cost:** about 1 call per message, 1 per explanation, 1 per draft. Output is capped by
   `SCDC_AI_MAX_TOKENS` (extraction requests ask for at most 600, drafts 500). Every `ModelResponse` carries
   `input_tokens` / `output_tokens` for tracking. No retries (`num_retries=0`).
@@ -245,12 +264,12 @@ The app will be deployed on Replit once all parts are finished, and the live mod
 1. In the Repl, enable the AI integration and note the base URL and key variables it provides.
 2. In **Secrets**, set `SCDC_AI_PROVIDER=litellm`, `SCDC_AI_MODEL` (a Claude model it offers), and
    `SCDC_AI_API_BASE` and `SCDC_AI_API_KEY` from those values.
-3. Install with `pip install -e ".[llm]"` (the pinned LiteLLM).
+3. Install the pinned LiteLLM: `uv sync --extra llm` (or `pip install "litellm==1.100.5"`).
 4. Run the live check there (`python -m scdc.ai.eval.live`, to be added at deployment), which reports
    real-model accuracy, false alarms, latency and tokens.
 
 The integration's key is expected to work only inside the Repl, so live runs happen there; locally the app runs
-without a model (or with a developer's own key in `backend/.env`).
+without a model (or with a developer's own key in `src/backend/.env`).
 
 *To confirm at deployment:* the exact variable names, the models offered, and whether JSON mode
 (`response_format`) is passed through.
@@ -271,35 +290,45 @@ The only errors raised on purpose are `DraftNotAllowedError` (plan not approved)
 
 ## 8. Testing and evaluation
 
-From `backend/`:
+From the repository root. The evaluation commands need the backend folder on Python's path first:
+`$env:PYTHONPATH = "src/backend"`.
 
 | Command | What it checks |
 |---|---|
-| `.\.venv\Scripts\python.exe -m pytest -q` | 355 unit and evaluation tests; no network, no key |
-| `.\.venv\Scripts\python.exe -m scdc.ai.eval.extraction` | 24 message cases (incl. WhatsApp contact details), rules-only and with a scripted model: field accuracy, **wrong values filled (must be 0)** |
-| `.\.venv\Scripts\python.exe -m scdc.ai.eval.explanation` | 20 scripted model replies with planted false claims: **leaks (must be 0)**, false alarms |
-| `.\.venv\Scripts\python.exe -m scdc.ai.eval.drafts` | 18 scripted polishes: **leaks (must be 0)**, placeholders, approval |
+| `.\src\backend\.venv\Scripts\python.exe -m pytest -q tests/ai` | 377 unit, endpoint and evaluation tests for this module (`-m pytest -q` alone runs all 496 backend tests); no network, no key |
+| `.\src\backend\.venv\Scripts\python.exe -m scdc.ai.eval.extraction` | 24 message cases (incl. WhatsApp contact details), rules-only and with a scripted model: field accuracy, **wrong values filled (must be 0)** |
+| `.\src\backend\.venv\Scripts\python.exe -m scdc.ai.eval.explanation` | 20 scripted model replies with planted false claims: **leaks (must be 0)**, false alarms |
+| `.\src\backend\.venv\Scripts\python.exe -m scdc.ai.eval.drafts` | 18 scripted polishes: **leaks (must be 0)**, placeholders, approval |
 
-Datasets: `fixtures/ai/`. Results and method: `docs/AI_EVALUATION.md`.
+Datasets: `fixtures/ai/`. Results and method: `docs/AI_EVALUATION.md`. The endpoint tests
+(`tests/ai/test_endpoints.py`, `tests/ai/test_bridge.py`) run against P2's app with the demo data, and always
+replace the model with `NoModelAdapter`, so a key in `.env` can never be used by a test.
 
-## 9. Integration with Person 2: what to align
+## 9. How it is integrated
 
-The AI module currently uses **local copies** of the shared shapes (`scdc/ai/schemas.py`). At integration these
-are swapped for imports from P2's `contracts` package. Known differences:
+The module lives in P2's backend (`src/backend/scdc/ai/`, tests in `tests/ai/`, datasets in `fixtures/ai/`)
+next to P2's `app/` and `contracts/` and P3's `impact_engine/`.
 
-| Topic | AI module | P2 (`src/backend/contracts/`) | Proposal |
-|---|---|---|---|
-| Draft incident | `DraftIncident`: every field may be blank (type, description, reported_at too) | `NormalizedIncident` requires `type`, `description`, `reported_at` | keep a separate draft shape for prefill; only the confirmed form becomes a `NormalizedIncident` |
-| `ExtractionResult` | defined here (§6.2) | not defined | P5 owns it; P2 imports it |
-| Extra keys | inputs ignore unknown keys, outputs forbid them | everything forbids extra keys | fine either way; inputs must then match exactly |
-| Money in JSON | 2-decimal string, `"80.00"`, rounding half up | `Decimal`, format not fixed (§10.4) | agree on `"80.00"` |
-| Layout | `backend/scdc/ai/`, imports `scdc.ai...` | `src/backend/`, imports `contracts...`, Python ≥ 3.13, uv | move `scdc/ai` under P2's layout; change imports only |
+- **Two sets of shapes, one bridge.** The module keeps its own models (`scdc/ai/schemas.py`): inputs ignore
+  unknown keys, outputs forbid them, and a `DraftIncident` may leave every field blank. P2's `contracts` objects
+  are converted by `scdc/ai/bridge.py` (`ai_snapshot`, `ai_incident`, `ai_impact`, `ai_plans`) through their JSON
+  form. Where P2's contracts allow `None` in text fields (supplier notes, job description, unresolved notes),
+  the module reads `""`; a numeric `raw_value` is read as text.
+- **Outputs need no conversion.** P2 has no extraction, explanation or draft types, so the endpoints return
+  `ExtractionResult`, `Explanation` and `DraftMessage` as they are.
+- **Model choice per request.** The adapter is a FastAPI dependency (`get_ai_adapter`), read once from the
+  settings; tests replace it.
+- **Contract changes made at integration** (P2's `contracts/impact.py`, mirrored here): an `unresolved` affected
+  entity has `severity: null`; `ImpactResult` gained the optional `analysis_status` and `data_issues` from P3's
+  engine. A failed analysis returns 422 and stores nothing.
+- **Demo clock:** `SCDC_DEMO_NOW` (section 6); `app/services/clock.py` gives P2's code the same "now".
 
-New optional inputs that need P2's agreement:
-- **`Supplier.phone`** (optional): the supplier's WhatsApp number, so a message can be matched by number.
-- `extract_from_message(IncomingMessage(...))`: pass the WhatsApp number and the owner's saved contact name
-  (or `extract_incident(..., sender=..., from_number=..., contact_name=...)`).
-- `explain(..., snapshot=...)`: pass the snapshot so explanations use names.
+Still open:
+- **`Supplier.phone`** is not in P2's model or database yet, so matching a message by the sender's phone number
+  (`from_number`, `IncomingMessage`) has nothing to compare against. Matching by `from_contact` /
+  `contact_reference` and by the owner's saved contact name works.
+- **Money in JSON:** the module writes `"80.00"` (2 decimals, rounding half up); P2's format is not fixed
+  (CONTRACTS §10.4).
 - **Alias learning (later):** when the owner resolves an `unmatched` supplier or item (e.g. "Mr Tan" → Bintang
   Rentals), the app could ask "Remember 'Mr Tan' as Bintang Rentals?" and save it to that record's `aliases`.
   The AI module already reads `aliases`; saving is a database write, so it belongs to P2. No model training.
@@ -308,6 +337,7 @@ New optional inputs that need P2's agreement:
 
 - **English only** (dates, numbers, keywords, claim checker). Malay messages mostly fall back to "unresolved".
 - **Invented names are only detected with a business word** ("Bintang Rentals" yes, "Mr Tan" no).
+- **Phone-number matching is idle** until P2 adds `Supplier.phone` (section 9).
 - **Negation is detected by nearby words** (same clause, within 4 words); unusual phrasing can still fool it.
   When it errs towards rejecting, the template text is shown (safe).
 - **Strict JSON:** a reply wrapped in a code block is rejected; provider JSON mode is requested to avoid this.

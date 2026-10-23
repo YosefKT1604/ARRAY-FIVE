@@ -11,20 +11,22 @@ Stack: React, TypeScript, Vite, Tailwind, TanStack Query, MSW (mock API), Vitest
 
 ## Setup (Windows PowerShell)
 
-You need Node 20+ and, for the real backend, Python with `uv` (see the backend README). Once:
+You need Node 20+ and, for the real backend, Python 3.13 (with `uv`, or a plain venv: see "Running Locally" in the root README). Once, from the repository root:
 
 ```powershell
-cd C:\Users\Yosef\Documents\ARRAY-FIVE\frontend
+cd frontend
 npm install
 ```
 
 ## The three terminals
 
+All paths are relative to the repository root (the backend is in `src/backend`, next to `frontend`).
+
 | Terminal | What | Commands |
 |---|---|---|
-| 1. Backend | Person 2's API on port 8000 (skip this if you only use mock mode) | `cd C:\Users\Yosef\Documents\ARRAY-FIVE-backend\src\backend` then `python -m uv run uvicorn app.main:app --reload --port 8000` |
-| 2. Claude | Claude Code, for changes | `cd C:\Users\Yosef\Documents\ARRAY-FIVE` then `claude` |
-| 3. Frontend | The app | `cd C:\Users\Yosef\Documents\ARRAY-FIVE\frontend` then `npm run dev` |
+| 1. Backend | Person 2's API on port 8000, with the impact engine and AI module (skip this if you only use mock mode) | `cd src\backend` then `python -m uv run uvicorn app.main:app --reload --port 8000` |
+| 2. Claude | Claude Code, for changes | from the repository root: `claude` |
+| 3. Frontend | The app | `cd frontend` then `npm run dev` |
 
 Open the address `npm run dev` prints (usually http://localhost:5173). The backend seeds itself when its database is empty.
 
