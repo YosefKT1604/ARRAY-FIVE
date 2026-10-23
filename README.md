@@ -417,3 +417,71 @@ The MVP is ready when:
 - Important decisions are recorded.
 - The demo can be reproduced from documented setup instructions.
 - The repository matches the demonstrated functionality.
+
+## 18. Running Locally
+
+Requires Python 3.13 and [uv](https://docs.astral.sh/uv/).
+
+Run these from `src/backend`:
+
+```bash
+uv sync
+uv run python -m app.db.seed
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+The API is then at `http://localhost:8000/api/v1`, and the interactive docs are at http://localhost:8000/docs`.
+
+The server creates and seeds the database on first start. Running the seed command again resets it to the demo data.
+
+### Backend without uv (Windows PowerShell)
+
+From the repository root, once:
+
+```powershell
+py -3.13 -m venv src\backend\.venv
+.\src\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest
+```
+
+Then start the server from `src\backend`:
+
+```powershell
+cd src\backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+```
+
+### Demo date and AI settings
+
+The demo story happens on Tuesday 20 Oct 2026. To make the backend agree with the frontend's demo date (how
+"tomorrow" and "Friday" in a message are read, and the date impact scores are measured from), set this before
+starting the server, or put it in `src/backend/.env` (copy `src/backend/.env.example`):
+
+```powershell
+$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"
+```
+
+Without an AI model (the default) every AI feature uses its rule-based or template fallback. To connect a model,
+see `docs/AI_INTEGRATION.md` section 6.
+
+### Frontend
+
+Requires Node 20+. In a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. The default `hybrid` mode uses the real backend and mocks only what is not built yet;
+`mock` mode needs no backend. See `frontend/README.md` for the modes and the demo script.
+
+### Tests
+
+From the repository root:
+
+```powershell
+.\src\backend\.venv\Scripts\python.exe -m pytest -q    # backend, impact engine and AI module; no network, no key
+```
+
+From `frontend`: `npm run typecheck; npm run lint; npm test; npm run build`.
