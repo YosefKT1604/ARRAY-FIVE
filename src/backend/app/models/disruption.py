@@ -20,3 +20,5 @@ class Disruption(Base):
     incident: Mapped[dict[str, Any]] = mapped_column(JSON)
     severity: Mapped[int | None]
     impact: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    # Why no recovery plans exist for an analyzed disruption (see PlanState); None when plans were made normally.
+    plan_state: Mapped[str | None]

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getDashboard } from '../api/endpoints'
 import { DisruptionStatusBadge, StatusBadge } from '../components/StatusBadge'
 import { PlanCost } from '../components/PlanCost'
+import { PlanStateNotice } from '../components/PlanStateNotice'
 import { EmptyState, ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, btnSecondary, card } from '../components/ui'
 import { formatDate, relativeDay, relativeTime } from '../lib/format'
@@ -12,6 +13,8 @@ import type { Disruption, PendingDecision } from '../types/contracts'
 function nextStepLink(d: Disruption): { to: string; label: string } {
   switch (d.status) {
     case 'plans_ready':
+      // No plans to review: the notice says why, so the way on is the impact screen.
+      if (d.plan_state) return { to: `/disruptions/${d.id}/impact`, label: 'See impact' }
       return { to: `/disruptions/${d.id}/plans`, label: 'Review plans' }
     case 'decided':
       return { to: `/disruptions/${d.id}/plans`, label: 'See decision' }
@@ -125,6 +128,11 @@ export function Dashboard() {
                         <div>
                           <p className="font-medium">{names.humanize(d.description)}</p>
                           <p className="mt-1 text-sm text-muted">Reported {relativeTime(d.reported_at)}</p>
+                          {d.plan_state && (
+                            <div className="mt-2">
+                              <PlanStateNotice state={d.plan_state} impactLink={d.id} />
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <DisruptionStatusBadge status={d.status} />

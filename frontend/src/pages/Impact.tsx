@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError } from '../api/errors'
 import { analyzeDisruption, generatePlans, getDisruption, getImpact } from '../api/endpoints'
 import { DependencyPath } from '../components/DependencyPath'
+import { PlanStateNotice } from '../components/PlanStateNotice'
 import { DisruptionStatusBadge } from '../components/StatusBadge'
 import { EmptyState, ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, card } from '../components/ui'
@@ -222,7 +223,12 @@ export function Impact() {
               Activity log
             </Link>
           </div>
-          {plans.error && <ErrorPanel error={plans.error} />}
+          {plans.error &&
+            (plans.error instanceof ApiError && plans.error.isImpactUnclear ? (
+              <PlanStateNotice state="impact_unclear" />
+            ) : (
+              <ErrorPanel error={plans.error} />
+            ))}
         </>
       )}
     </div>

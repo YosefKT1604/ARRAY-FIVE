@@ -7,6 +7,7 @@ FORM = json.loads(
 )["form_input"]
 
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_report_disruption_returns_201_with_incident(client):
     response = client.post("/api/v1/disruptions", json=FORM)
     assert response.status_code == 201
@@ -15,6 +16,7 @@ def test_report_disruption_returns_201_with_incident(client):
     assert body["disruption"]["status"] == "received"
     assert body["incident"]["quantity_affected"] == 20
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_list_and_get_disruption(client):
     client.post("/api/v1/disruptions", json=FORM)
     assert [d["id"] for d in client.get("/api/v1/disruptions").json()["items"]] == ["D-001"]
@@ -55,6 +57,7 @@ def test_same_open_incident_returns_409(client):
     assert response.json()["code"] == "DUPLICATE_DISRUPTION"
     assert "D-001" in response.json()["detail"]
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_different_new_date_is_not_a_duplicate(client):
     client.post("/api/v1/disruptions", json=FORM)
     response = client.post("/api/v1/disruptions", json={**FORM, "new_arrival_date": "2026-10-24"})
@@ -71,6 +74,7 @@ def test_decided_disruption_can_be_reported_again(client):
     response = client.post("/api/v1/disruptions", json=FORM)
     assert response.status_code == 201
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_missing_material_field_needs_clarification(client):
     response = client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": None})
     assert response.status_code == 201
@@ -78,6 +82,7 @@ def test_missing_material_field_needs_clarification(client):
     assert body["disruption"]["status"] == "needs_clarification"
     assert [f["field"] for f in body["incident"]["unresolved_fields"]] == ["quantity_affected"]
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_needs_clarification_cannot_be_analyzed(client):
     client.post("/api/v1/disruptions", json={**FORM, "quantity_affected": None})
 

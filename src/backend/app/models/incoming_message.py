@@ -24,3 +24,6 @@ class IncomingMessageRecord(Base):
     # and new date were already reported, so the message was linked to the open disruption instead).
     disruption_id: Mapped[str | None] = mapped_column(ForeignKey("disruptions.id"))
     report_outcome: Mapped[str | None]
+    # Plain-language reasons a complete-looking reading was NOT filed because it cannot be true; None otherwise.
+    not_filed_reasons: Mapped[list[str] | None] = mapped_column(JSON)
+

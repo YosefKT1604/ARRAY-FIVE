@@ -36,12 +36,14 @@ def test_list_plans_returns_saved_plans(client):
     listed = client.get("/api/v1/disruptions/D-001/recovery-plans").json()
     assert listed == created
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_generate_plans_before_analysis_returns_409(client):
     client.post("/api/v1/disruptions", json=FORM)
 
     response = client.post("/api/v1/disruptions/D-001/recovery-plans")
     assert response.status_code == 409
 
+@pytest.mark.usefixtures("seeded_client")  # reports are checked against the demo business data
 def test_generate_plans_twice_returns_409(client):
     report_and_analyze(client)
     client.post("/api/v1/disruptions/D-001/recovery-plans")

@@ -2,7 +2,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 
 from app.errors import ApiError, ErrorCode
+from app.models.delivery import Delivery
 from app.models.disruption import Disruption
+from app.models.resource import Resource
+from app.models.supplier import Supplier
 from app.schemas.disruption import DisruptionCreate
 from app.services import clock
 from app.services.activity_log import log_activity
@@ -26,6 +29,31 @@ def missing_material_fields(data: DisruptionCreate) -> list[UnresolvedField]:
         for field in MATERIAL_FIELDS
         if getattr(data, field) is None
     ]
+
+# Reports that cannot be true, as (field, plain-words message) pairs, one per field. A field that was not given
+# is not checked here: missing material fields are handled as needs_clarification instead.
+def validate_report(db: Session, data: DisruptionCreate) -> list[tuple[str, str]]:
+    problems: dict[str, str] = {}
+    supplier = db.get(Supplier, data.supplier_id) if data.supplier_id else None
+    resource = db.get(Resource, data.resource_id) if data.resource_id else None
+    delivery = db.get(Delivery, data.delivery_id) if data.delivery_id else None
+    if data.supplier_id and supplier is None:
+        problems["supplier_id"] = "We don't know that supplier."
+    if data.resource_id and resource is None:
+        problems["resource_id"] = "We don't know that item."
+    if data.delivery_id and delivery is None:
+        problems["delivery_id"] = "We don't know that order."
+    elif delivery is not None:
+        if supplier is not None and delivery.supplier_id != supplier.id:
+            problems["delivery_id"] = "This order is not from the supplier you chose."
+        elif resource is not None and delivery.resource_id != resource.id:
+            problems["delivery_id"] = "This order does not include the item you chose."
+        if data.quantity_affected is not None and data.quantity_affected > delivery.quantity:
+            unit = f"{resource.unit}s" if resource is not None else "items"
+            problems["quantity_affected"] = f"{data.quantity_affected} {unit} is more than the {delivery.quantity} on this delivery."
+    if data.original_arrival_date and data.new_arrival_date and data.new_arrival_date < data.original_arrival_date:
+        problems["new_arrival_date"] = "The new date cannot be earlier than the date it was due."
+    return list(problems.items())
 
 def create_disruption(db: Session, data: DisruptionCreate) -> Disruption:
     unresolved = missing_material_fields(data)
@@ -69,6 +97,7 @@ def analyze_disruption(db: Session, disruption: Disruption) -> ImpactResult:
         raise ApiError(status_code=422, code=ErrorCode.VALIDATION_ERROR,
                        detail="Impact analysis failed: " + ("; ".join(problems) or "the incident could not be analyzed"))
     disruption.impact = impact.model_dump(mode="json")
+    disruption.plan_state = None  # a fresh analysis starts over
     disruption.status = DisruptionStatus.ANALYZED
     log_activity(db, disruption.id, ActivityType.ANALYSIS_COMPLETED, details={"affected_count": len(impact.affected_entities)})
     db.commit()

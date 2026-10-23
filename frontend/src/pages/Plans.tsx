@@ -1,14 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
+import { ApiError } from '../api/errors'
 import { generatePlans, getDisruption, getExplanation, listPlans } from '../api/endpoints'
 import { AiBadge } from '../components/AiBadge'
 import { PlanCard } from '../components/PlanCard'
+import { PlanStateNotice } from '../components/PlanStateNotice'
 import { DisruptionStatusBadge } from '../components/StatusBadge'
 import { EmptyState, ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary } from '../components/ui'
 import { API_MODE } from '../config'
 import { sortByRank } from '../lib/plans'
 import { useNames } from '../lib/useNames'
+import type { PlanState } from '../types/contracts'
 
 export function Plans() {
   const { id = '' } = useParams()
@@ -27,6 +30,11 @@ export function Plans() {
       void queryClient.invalidateQueries({ queryKey: ['disruption', id] })
       void queryClient.invalidateQueries({ queryKey: ['explanation', id] })
     },
+    // A refusal is remembered by the backend; reload so the screen shows it the same way as on a later visit.
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ['plans', id] })
+      void queryClient.invalidateQueries({ queryKey: ['disruption', id] })
+    },
   })
 
   if (disruption.isLoading || plans.isLoading) return <LoadingState label="Loading options…" />
@@ -35,6 +43,9 @@ export function Plans() {
 
   const d = disruption.data!
   const list = sortByRank(plans.data!.items.filter((p) => p.status !== 'superseded'))
+  // The backend's reason for having no plans; a refusal to plan arrives as an error before it can be listed.
+  const refused = generate.error instanceof ApiError && generate.error.isImpactUnclear
+  const state: PlanState | null = plans.data!.state ?? d.plan_state ?? (refused ? 'impact_unclear' : null)
   const anyWorks = list.some((p) => p.validation?.status === 'feasible')
   const ex = explanation.data
   const compare = (planId: string) => ex?.plan_comparisons.find((c) => c.plan_id === planId)
@@ -52,7 +63,9 @@ export function Plans() {
         <p className="mt-1 text-muted">{names.humanize(d.description)}</p>
       </div>
 
-      {list.length === 0 && (
+      {list.length === 0 && state && <PlanStateNotice state={state} impactLink={id} />}
+
+      {list.length === 0 && !state && (
         <div className="space-y-3">
           <EmptyState title="No options yet">
             {d.status === 'analyzed' ? 'Ask us to find ways to fix this.' : 'Check the impact first, then come back.'}

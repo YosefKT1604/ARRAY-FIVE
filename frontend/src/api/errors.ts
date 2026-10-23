@@ -46,9 +46,14 @@ export class ApiError extends Error {
     return this.sentence()
   }
 
+  /** The refusal to plan because the impact could not be decided (not a stale or already-decided plan). */
+  get isImpactUnclear(): boolean {
+    return this.code === 'INVALID_STATE_TRANSITION' && /impact could not be decided/i.test(this.detail)
+  }
+
   /** Should the UI offer "Reload the latest version"? */
   get isStale(): boolean {
-    return this.code === 'STALE_PLAN_VERSION' || this.code === 'INVALID_STATE_TRANSITION'
+    return this.code === 'STALE_PLAN_VERSION' || (this.code === 'INVALID_STATE_TRANSITION' && !this.isImpactUnclear)
   }
 
   private sentence(): string {

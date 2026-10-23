@@ -1,5 +1,6 @@
 from enum import StrEnum
 from http import HTTPStatus
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -33,9 +34,11 @@ DEFAULT_CODE = {
 # For errors where the status alone is ambiguous (several kinds of 409). It subclasses Starlette's
 # HTTPException so the existing http_error handler picks it up without a handler of its own.
 class ApiError(StarletteHTTPException):
-    def __init__(self, status_code: int, code: ErrorCode, detail: str):
+    def __init__(self, status_code: int, code: ErrorCode, detail: str, errors: list[dict[str, Any]] | None = None):
         super().__init__(status_code=status_code, detail=detail)
         self.code = code
+        # Per-field problems for a 422, in the same {loc, msg, type} shape the request validation handler uses.
+        self.errors = errors
 
 def problem_response(problem: Problem, headers: dict[str, str] | None = None) -> JSONResponse:
     return JSONResponse(
@@ -53,6 +56,7 @@ def register_error_handlers(app: FastAPI) -> None:
             status=exc.status_code,
             detail=exc.detail,
             instance=request.url.path,
+            errors=getattr(exc, "errors", None),
             code=getattr(exc, "code", None) or DEFAULT_CODE.get(exc.status_code, ErrorCode.BAD_REQUEST),
         )
         return problem_response(problem, exc.headers)
