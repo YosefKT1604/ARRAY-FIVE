@@ -1,0 +1,85 @@
+{
+  "_note": "MOCK-ONLY scenario B (not from the shared fixtures, not produced by any real module). Same delay as the main demo, but Cahaya (S-02) can only supply 10 chairs, so every plan is infeasible or needs confirmation. For Person 4 (plan validation) and Person 5 (explanations) to test their 'nothing works yet' paths. Entries with use_fixture_plan reuse a plan from fixtures/demo/expected_plans.json; the others are written here. IDs are rewritten at runtime.",
+  "schema_version": "1.0",
+  "scenario": "no_feasible",
+  "seed_change": "S-02 (Cahaya Event Rentals) has available_quantity 10 instead of 25",
+  "expected": {
+    "plan_statuses": ["infeasible", "infeasible", "needs_confirmation", "needs_confirmation"],
+    "any_feasible": false,
+    "ui_state": "No plan works yet. Here's what to check next"
+  },
+  "plans": [
+    {
+      "id": "RP-001",
+      "disruption_id": "D-001",
+      "version": 1,
+      "summary": "Rent 20 chairs from Cahaya Event Rentals for delivery on 21 Oct.",
+      "actions": [
+        {
+          "id": "RA-001",
+          "action_type": "source_alternative_supplier",
+          "target_entity": { "entity_type": "resource", "entity_id": "R-01" },
+          "parameters": { "supplier_id": "S-02", "resource_id": "R-01", "quantity": 20, "order_date": "2026-10-20", "expected_arrival_date": "2026-10-21" },
+          "status": "draft"
+        }
+      ],
+      "assumptions": [],
+      "estimated_cost": { "amount": "80.00", "currency": "MYR" },
+      "validation": {
+        "plan_id": "RP-001",
+        "plan_version": 1,
+        "status": "infeasible",
+        "checks": [
+          { "code": "SUPPLIER_AVAILABLE", "result": "fail", "detail": "S-02 has only 10 chairs available; 20 are needed.", "evidence_ids": ["SO-02"] },
+          { "code": "QUANTITY_SUFFICIENT", "result": "fail", "detail": "50 + 10 = 60 against 70 required; short 10.", "evidence_ids": ["R-01", "DEP-03", "DEP-04"] },
+          { "code": "LEAD_TIME_OK", "result": "pass", "detail": "1-day lead time; arrives 2026-10-21.", "evidence_ids": ["SO-02"] },
+          { "code": "DEADLINE_MET", "result": "pass", "detail": "Arrives before 2026-10-22.", "evidence_ids": ["DEP-03", "DEP-04"] }
+        ],
+        "unresolved_assumptions": []
+      },
+      "rank": null,
+      "status": "proposed",
+      "created_by": "rules"
+    },
+    { "use_fixture_plan": "RP-002" },
+    { "use_fixture_plan": "RP-003" },
+    {
+      "id": "RP-004",
+      "disruption_id": "D-001",
+      "version": 1,
+      "summary": "Rent the 10 chairs Cahaya has, and ask Maju Rental Supplies to deliver 10 more by 21 Oct.",
+      "actions": [
+        {
+          "id": "RA-004",
+          "action_type": "source_alternative_supplier",
+          "target_entity": { "entity_type": "resource", "entity_id": "R-01" },
+          "parameters": { "supplier_id": "S-02", "resource_id": "R-01", "quantity": 10, "order_date": "2026-10-20", "expected_arrival_date": "2026-10-21" },
+          "status": "draft"
+        },
+        {
+          "id": "RA-005",
+          "action_type": "contact_supplier",
+          "target_entity": { "entity_type": "supplier", "entity_id": "S-01" },
+          "parameters": { "supplier_id": "S-01", "request": "Deliver 10 of the remaining chairs by 21 Oct", "requested_date": "2026-10-21" },
+          "status": "draft"
+        }
+      ],
+      "assumptions": ["S-01 can bring 10 of the remaining chairs forward to 2026-10-21."],
+      "estimated_cost": null,
+      "validation": {
+        "plan_id": "RP-004",
+        "plan_version": 1,
+        "status": "needs_confirmation",
+        "checks": [
+          { "code": "SUPPLIER_AVAILABLE", "result": "pass", "detail": "S-02 confirmed 10 available.", "evidence_ids": ["SO-02"] },
+          { "code": "QUANTITY_SUFFICIENT", "result": "unresolved", "detail": "The other 10 chairs depend on S-01 agreeing to deliver early.", "evidence_ids": ["DL-01"] },
+          { "code": "FACTS_KNOWN", "result": "unresolved", "detail": "Depends on supplier confirmation.", "evidence_ids": [] }
+        ],
+        "unresolved_assumptions": ["S-01 can bring 10 of the remaining chairs forward to 2026-10-21."]
+      },
+      "rank": null,
+      "status": "proposed",
+      "created_by": "rules"
+    }
+  ]
+}

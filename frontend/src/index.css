@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+
+/* Visual direction: "calm field notes". Warm paper, deep ink, one teal accent.
+   Status colours (green / amber / red) are reserved for plan and check status only. */
+@theme {
+  --color-paper: #faf6ef;
+  --color-card: #fffdf9;
+  --color-ink: #1d2b36;
+  --color-muted: #5f6b73;
+  --color-line: #e4dccd;
+  --color-brand: #0e5c58;
+  --color-brand-dark: #0a4643;
+  --color-ok: #1d6b3a;
+  --color-ok-bg: #e3f2e7;
+  --color-warn: #8a5a00;
+  --color-warn-bg: #fdf0d2;
+  --color-bad: #a3281d;
+  --color-bad-bg: #fbe3df;
+  --color-info-bg: #e6eef2;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --font-display: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+}
+
+html {
+  background: var(--color-paper);
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
