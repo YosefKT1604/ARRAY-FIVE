@@ -86,6 +86,14 @@ def test_extract_without_sender_leaves_supplier_for_the_owner(seeded_client, dem
     assert body["needs_clarification"] is True
 
 
+def test_extract_with_sender_does_not_ask_for_the_supplier(seeded_client, demo_clock):
+    """A known sender fills the supplier, so the "does not name any known suppliers" question is not asked."""
+    body = seeded_client.post(f"{API}/disruptions/extract", json={"message": DEMO_MESSAGE, "from_contact": MAJU}).json()
+    assert body["draft_incident"]["supplier_id"] == "S-01"
+    assert "supplier_id" not in [u["field"] for u in body["unresolved_fields"]]
+    assert not any("known suppliers" in q for q in body["clarification_questions"])
+
+
 def test_extract_falls_back_when_the_model_reply_is_broken(seeded_client, demo_clock):
     """A broken model reply never fails the request: the rule-based reading is returned with a warning."""
     adapter = MockAdapter({"*": "this is not JSON"})

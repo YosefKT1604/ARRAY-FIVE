@@ -172,7 +172,7 @@ describe('report form', () => {
     )
     const user = userEvent.setup()
     renderAt('/report')
-    await screen.findByRole('option', { name: 'Maju Rental Supplies' })
+    await screen.findAllByRole('option', { name: 'Maju Rental Supplies' })
     await user.selectOptions(screen.getByRole('combobox', { name: /Which supplier is late/ }), 'Maju Rental Supplies')
     await user.selectOptions(screen.getByRole('combobox', { name: /What is affected/ }), 'Folding Chairs')
     await user.type(screen.getByRole('spinbutton', { name: /How many/ }), '500')

@@ -20,7 +20,7 @@ import { cn } from '../lib/cn'
 import { formatDate } from '../lib/format'
 import { mentionsSeveralItems, plainQuestion, SEVERAL_ITEMS_TIP } from '../lib/questions'
 import { useNames } from '../lib/useNames'
-import type { Delivery, DisruptionCreate, ExtractionResult } from '../types/contracts'
+import type { Delivery, DisruptionCreate, ExtractionResult, Supplier } from '../types/contracts'
 
 interface FormState {
   supplier_id: string
@@ -61,6 +61,22 @@ function plainEvidence(note: string): string {
   return plainDates(note)
 }
 
+// How the backend words each field in its questions ("Please confirm the supplier: ...").
+const QUESTION_LABEL: Partial<Record<keyof FormState, string>> = {
+  supplier_id: 'the supplier',
+  resource_id: 'the affected item',
+  delivery_id: 'the delivery order',
+  quantity_affected: 'how many units are affected',
+  original_arrival_date: 'the original delivery date',
+  new_arrival_date: 'the new arrival date',
+}
+
+/** The supplier a WhatsApp message came from, by its contact reference. */
+function senderOf(list: Supplier[], m: { from_contact?: string | null }): Supplier | undefined {
+  const ref = m.from_contact?.trim().toLowerCase()
+  return ref ? list.find((x) => x.contact_reference?.trim().toLowerCase() === ref) : undefined
+}
+
 function prefill(result: ExtractionResult): FormState {
   const d = result.draft_incident
   return {
@@ -84,8 +100,10 @@ export function ReportDisruption() {
 
   const [message, setMessage] = useState('')
   const names = useNames()
-  const [fromContact, setFromContact] = useState('')
-  // True while the contact reference came from the demo message, so it is dropped when the message is replaced.
+  // The supplier chosen under "Who sent it?" (a supplier ID; '' = not sure). null = not touched yet, so an
+  // opened WhatsApp message can preselect its sender.
+  const [senderChoice, setSenderChoice] = useState<string | null>(null)
+  // True while the sender came from the demo message, so it is dropped when the message is replaced.
   const [demoContact, setDemoContact] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null)
@@ -101,10 +119,15 @@ export function ReportDisruption() {
   if (inboxMessage && loadedMessageId !== inboxMessage.id) {
     setLoadedMessageId(inboxMessage.id)
     setMessage(inboxMessage.text)
-    setFromContact(inboxMessage.from_contact ?? inboxMessage.contact_name ?? inboxMessage.from_number ?? '')
     setExtraction(inboxMessage.extraction)
     setForm(prefill(inboxMessage.extraction))
   }
+
+  // The API gets the sender's contact reference; people see the supplier's name, never the reference.
+  const supplierList = suppliers.data?.items ?? []
+  const inboxSender = inboxMessage ? senderOf(supplierList, inboxMessage) : undefined
+  const senderId = senderChoice ?? inboxSender?.id ?? ''
+  const fromContact = supplierList.find((x) => x.id === senderId)?.contact_reference || undefined
 
   const extract = useMutation({
     mutationFn: (text: string) => extractDisruption(text, fromContact),
@@ -145,10 +168,6 @@ export function ReportDisruption() {
     },
   })
 
-  // The API gets the contact reference; people see the supplier's name, never the reference.
-  const knownSender = suppliers.data?.items.find((s) => s.contact_reference && s.contact_reference === fromContact)
-  const senderShown = knownSender ? knownSender.name : fromContact.startsWith('whatsapp:') ? '' : fromContact
-
   const unresolved = new Map((extraction?.unresolved_fields ?? []).map((u) => [u.field, u.note ?? 'Not found in the message.']))
   const serverErrors = submit.error instanceof ApiError ? submit.error.fieldErrors : {}
 
@@ -175,6 +194,15 @@ export function ReportDisruption() {
     if (Object.keys(errors).length === 0) submit.mutate()
   }
 
+  // The same wording as the box at the top: the question for this field, else its note as a sentence.
+  function hint(name: keyof FormState): string {
+    const label = QUESTION_LABEL[name]
+    const q = label && extraction?.clarification_questions.find((x) => x.startsWith(`Please confirm ${label}`))
+    if (q) return plainQuestion(q, names.humanize)
+    const note = (unresolved.get(name) ?? 'Not found in the message').trim().replace(/\.$/, '')
+    return `${note.charAt(0).toUpperCase()}${note.slice(1)}. Please fill this in.`
+  }
+
   function field(name: keyof FormState, label: string, input: (props: { id: string; className: string }) => ReactNode) {
     const flagged = unresolved.has(name) && !form[name]
     const error = clientErrors[name] ?? serverErrors[name]
@@ -194,7 +222,7 @@ export function ReportDisruption() {
             {error}
           </p>
         )}
-        {!error && flagged && <p className="mt-1 text-sm text-warn">{unresolved.get(name)} Please fill this in.</p>}
+        {!error && flagged && <p className="mt-1 text-sm text-warn">{hint(name)}</p>}
         {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">How we got this: {plainEvidence(evidence)}</p>}
       </div>
     )
@@ -229,7 +257,7 @@ export function ReportDisruption() {
       )}
       {inboxMessage && (
         <p role="status" className="rounded-xl bg-info-bg p-3 text-sm">
-          Filled in from WhatsApp message {inboxMessage.id}.{' '}
+          Filled in from the supplier's WhatsApp message.{' '}
           <Link to="/whatsapp" className="font-semibold text-brand underline">
             Back to the inbox
           </Link>
@@ -245,7 +273,7 @@ export function ReportDisruption() {
           onChange={(e) => {
             setMessage(e.target.value)
             if (demoContact) {
-              setFromContact('')
+              setSenderChoice('')
               setDemoContact(false)
             }
           }}
@@ -255,15 +283,21 @@ export function ReportDisruption() {
         />
         <label className="mt-3 block text-sm">
           <span className="font-semibold">Who sent it? (optional)</span>
-          <input
-            value={senderShown}
+          <select
+            value={senderId}
             onChange={(e) => {
-              setFromContact(e.target.value)
+              setSenderChoice(e.target.value)
               setDemoContact(false)
             }}
-            placeholder="e.g. a WhatsApp number or contact name"
             className={cn(inputBase, 'mt-1 border-line')}
-          />
+          >
+            <option value="">Not sure</option>
+            {supplierList.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
         </label>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
@@ -279,7 +313,9 @@ export function ReportDisruption() {
             className={btnSecondary}
             onClick={() => {
               setMessage(incidentFixture.supplier_message.text)
-              setFromContact(incidentFixture.supplier_message.from_contact)
+              setSenderChoice(
+                supplierList.find((x) => x.contact_reference === incidentFixture.supplier_message.from_contact)?.id ?? '',
+              )
               setDemoContact(true)
             }}
           >

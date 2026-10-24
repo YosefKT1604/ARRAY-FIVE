@@ -7,6 +7,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import incident from '../../../fixtures/demo/incident.json'
 import { plainQuestion } from '../lib/questions'
 import { createMockDisruption, logMock, resetMockState, state } from '../mocks/db'
+import { mockReceive } from '../mocks/whatsapp'
 import { mockExtract } from '../mocks/extract'
 import { server } from '../mocks/server'
 import { ActivityLog } from '../pages/ActivityLog'
@@ -116,7 +117,9 @@ describe('report form with an unclear message', () => {
 })
 
 describe('"Who sent it?"', () => {
-  it('shows the supplier name, sends the reference, and clears it when the user types their own message', async () => {
+  const senderBox = () => screen.getByRole('combobox', { name: /Who sent it/ })
+
+  it('lists the saved suppliers, sends the chosen contact reference, and sends nothing for "Not sure"', async () => {
     const user = userEvent.setup()
     const sent: (string | null | undefined)[] = []
     server.use(
@@ -126,20 +129,91 @@ describe('"Who sent it?"', () => {
       }),
     )
     renderAt('/report', <ReportDisruption />)
-    await user.click(screen.getByRole('button', { name: 'Use the demo message' }))
-    const who = screen.getByRole('textbox', { name: /Who sent it/ })
-    expect(await screen.findByDisplayValue('Maju Rental Supplies')).toBe(who)
-    expect(screen.queryByDisplayValue(/whatsapp:|synthetic/)).not.toBeInTheDocument()
+    await screen.findAllByRole('option', { name: 'Maju Rental Supplies' })
+    const options = Array.from(senderBox().querySelectorAll('option')).map((o) => o.textContent)
+    expect(options[0]).toBe('Not sure')
+    expect(options).toContain('Maju Rental Supplies')
+    expect(senderBox()).toHaveValue('')
 
+    await user.click(screen.getByRole('textbox', { name: 'Supplier message' }))
+    await user.paste(MIXED_MESSAGE)
     await user.click(screen.getByRole('button', { name: 'Read message' }))
     await screen.findByText(/Message read/)
-    expect(sent[0]).toBe(incident.supplier_message.from_contact)
+    expect(sent[0] == null || sent[0] === '').toBe(true)
+
+    await user.selectOptions(senderBox(), 'Maju Rental Supplies')
+    await user.click(screen.getByRole('button', { name: 'Read message' }))
+    await screen.findAllByText(/Message read/)
+    await vi.waitFor(() => expect(sent).toHaveLength(2))
+    expect(sent[1]).toBe(incident.supplier_message.from_contact)
+  })
+
+  it('"Use the demo message" selects Maju, and typing a different message clears the sender', async () => {
+    const user = userEvent.setup()
+    renderAt('/report', <ReportDisruption />)
+    await screen.findAllByRole('option', { name: 'Maju Rental Supplies' })
+    await user.click(screen.getByRole('button', { name: 'Use the demo message' }))
+    const maju = Array.from(senderBox().querySelectorAll('option')).find((o) => o.textContent === 'Maju Rental Supplies')
+    expect(senderBox()).toHaveValue(maju!.getAttribute('value'))
 
     await user.click(screen.getByRole('textbox', { name: 'Supplier message' }))
     await user.paste(' extra')
-    expect(who).toHaveValue('')
+    expect(senderBox()).toHaveValue('')
+  })
+
+  it('preselects the sender when a WhatsApp message is opened from the inbox', async () => {
+    const m = mockReceive({ text: incident.supplier_message.text, from_contact: incident.supplier_message.from_contact })
+    renderAt(`/report?message=${m.id}`, <ReportDisruption />)
+    await screen.findByText(/Filled in from the supplier's WhatsApp message/)
+    await vi.waitFor(() => expect((senderBox() as HTMLSelectElement).selectedOptions[0]?.textContent).toBe('Maju Rental Supplies'))
+  })
+
+  it('fills the supplier from the sender when the message names none, without the "no known suppliers" question', async () => {
+    const user = userEvent.setup()
+    renderAt('/report', <ReportDisruption />)
+    await screen.findAllByRole('option', { name: 'Maju Rental Supplies' })
+    await user.selectOptions(senderBox(), 'Maju Rental Supplies')
+    await user.click(screen.getByRole('textbox', { name: 'Supplier message' }))
+    await user.paste('Boss, 20 chairs will be late, now Friday')
     await user.click(screen.getByRole('button', { name: 'Read message' }))
-    await screen.findAllByText(/Message read/)
-    expect(sent[1] === '' || sent[1] == null).toBe(true)
+    await screen.findByText(/Message read/)
+    await vi.waitFor(() => expect(screen.getByLabelText(/Which supplier is late/)).toHaveValue('S-01'))
+    expect(screen.queryByText(/does not name any known suppliers/i)).not.toBeInTheDocument()
+  })
+})
+
+describe('hints under the form fields', () => {
+  it('read as a clean sentence with the same wording as the box at the top', async () => {
+    const user = userEvent.setup()
+    const mixed = mixedExtraction()
+    mixed.draft_incident = { ...mixed.draft_incident, resource_id: null, quantity_affected: null }
+    server.use(http.post('*/disruptions/extract', () => HttpResponse.json(mixed)))
+    renderAt('/report', <ReportDisruption />)
+    await user.click(screen.getByRole('textbox', { name: 'Supplier message' }))
+    await user.paste(MIXED_MESSAGE)
+    await user.click(screen.getByRole('button', { name: 'Read message' }))
+    await screen.findByText(/Message read/)
+    expect(screen.queryByText(/Please fill this in/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/different quantities: 7, 15/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('The message gives two numbers (7 and 15). Which one is for this item?').length).toBe(2)
+  })
+
+  it('turn a bare backend note into a sentence', async () => {
+    const user = userEvent.setup()
+    const base = mockExtract('hello', null)
+    server.use(
+      http.post('*/disruptions/extract', () =>
+        HttpResponse.json({
+          ...base,
+          unresolved_fields: [{ field: 'supplier_id', reason: 'missing', raw_value: null, candidates: [], note: 'the message does not name any known suppliers' }],
+          clarification_questions: [],
+        }),
+      ),
+    )
+    renderAt('/report', <ReportDisruption />)
+    await user.click(screen.getByRole('textbox', { name: 'Supplier message' }))
+    await user.paste('hello')
+    await user.click(screen.getByRole('button', { name: 'Read message' }))
+    expect(await screen.findByText('The message does not name any known suppliers. Please fill this in.')).toBeInTheDocument()
   })
 })

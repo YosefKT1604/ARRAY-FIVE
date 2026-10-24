@@ -90,7 +90,7 @@ describe('Create report from the inbox', () => {
   it('fills the report form from the stored reading', async () => {
     mockReceive({ text: incident.supplier_message.text, from_contact: incident.supplier_message.from_contact })
     renderPage(<ReportDisruption />, '/report?message=WA-001')
-    expect(await screen.findByText(/Filled in from WhatsApp message WA-001/)).toBeInTheDocument()
+    expect(await screen.findByText(/Filled in from the supplier's WhatsApp message\./)).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Supplier message' })).toHaveValue(incident.supplier_message.text)
     expect(await screen.findByRole('combobox', { name: /Which supplier is late/ })).toHaveValue('S-01')
     expect(screen.getByRole('spinbutton', { name: /How many/ })).toHaveValue(20)
