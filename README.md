@@ -20,6 +20,7 @@
 | GitHub Repository | https://github.com/YosefKT1604/ARRAY-FIVE |
 | Live Demo | https://array-five.replit.app |
 | Slide Deck | https://canva.link/yxdppt9l7r4bfl2 |
+| Slide Deck (PDF) | submission/SDC2026-ARRAY FIVE-pitch-Slides.pdf |
 | Demo Video | https://youtu.be/Ok1MEf8au64|
 ---
 
@@ -127,7 +128,8 @@ The AI is called only through an adapter. It never writes to the database or dec
 │   ├── SDC2026_ARRAY FIVE_Preliminary.pdf
 │   ├── SDC2026_ARRAY FIVE_TechDeclaration.pdf
 │   ├── SDC2026_ARRAY FIVE_Replit_POU.pdf
-│   └── SDC2026_ARRAY FIVE_Runpod_POU.pdf
+│   ├── SDC2026-ARRAY FIVE-pitch-Slides.pdf
+|   └── SDC2026-ARRAY FIVE_DemoLink.pdf
 ├── tests/                   # Backend, impact engine, recovery and AI tests
 ├── .replit                  # Replit run and deployment configuration
 ├── LICENSE
@@ -195,7 +197,7 @@ npm run typecheck; npm run lint; npm test
 
 ## Testing & Evaluation
 
-- **532 backend tests** and **42 recovery-planning tests**, covering failure cases such as late suppliers, insufficient stock, unknown suppliers, edited plans becoming invalid and AI failure. They run on every change through GitHub Actions.
+- **584 backend tests (including 42 recovery-planning tests) and 78 frontend tests**, covering failure cases such as late suppliers, insufficient stock, unknown suppliers, edited plans becoming invalid and AI failure. 
 - **AI evaluation on 62 synthetic cases**: 24 supplier-message extractions, 20 explanations and 18 draft messages, with zero unsafe outputs shown.
 - **Demo results** are checked against agreed expected outputs (`fixtures/demo/`: `incident.json`, `expected_impact.json`, `expected_plans.json`).
 
@@ -232,7 +234,7 @@ The system was split into five modules built in parallel against shared data con
 | P4 | Recovery planning: plan generator, deterministic validator, ranking | Raymond Russel Willim | raymondwillim|
 | P5 | AI module: Gemini adapter, message extraction, explanations, drafts, evaluation sets | Erwin Okto Wu | ErwinOW |
 
-Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.com/YosefKT1604)), [@DillonNicholas](https://github.com/DillonNicholas), [@ErwinOW](https://github.com/ErwinOW), [@Ojojo37](https://github.com/Ojojo37), [@raymondwillim](https://github.com/raymondwillim).
+Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.com/YosefKT1604)), Nicholas Dillon[@DillonNicholas](https://github.com/DillonNicholas), Erwin Okto Wu [@ErwinOW](https://github.com/ErwinOW), Joshua Michael Nathaniel Tjoa [@Ojojo37](https://github.com/Ojojo37), Raymond Russel Willim [@raymondwillim](https://github.com/raymondwillim).
 
 **Mentoring:** Alpha Red (SDC sponsor) reviewed our system architecture and validation approach.
 
@@ -258,7 +260,7 @@ Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.c
 - [x] Slide deck link added
 - [x] Demo video link added
 - [x] Replit used, with proof of use in `submission/`
-- [ ] RunPod used, with proof of use in `submission/`
+- [x] RunPod : not applicable (RunPod was not used)
 - [x] Preliminary proposal completed (`SDC2026_ARRAY FIVE_Preliminary.pdf`)
 - [x] Technical & Tools Declaration completed (`SDC2026_ARRAY FIVE_TechDeclaration.pdf`)
 - [x] Submission files named with the team name
