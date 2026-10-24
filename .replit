@@ -1,6 +1,6 @@
 # Replit config (format per docs.replit.com "Configuring your Repl": modules, [run], [run.env],
 # [[ports]], [deployment]). Secrets (AI settings) go in Replit Secrets, never in this file.
-modules = ["python-3.13", "nodejs-20"]
+modules = ["python-3.12", "nodejs-20"]
 
 [nix]
 channel = "stable-24_05"

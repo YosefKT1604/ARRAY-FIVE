@@ -2,7 +2,7 @@
 
 ## Quick start
 
-1. Install Python 3.13, [uv](https://docs.astral.sh/uv/) and Node 20+.
+1. Install Python 3.12 or newer, [uv](https://docs.astral.sh/uv/) and Node 20+.
 2. Backend, from `src\backend`: `python -m uv sync`
 3. Start it: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`
 4. Demo date: `$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"` (before step 3).
@@ -434,7 +434,7 @@ The MVP is ready when:
 
 ## 18. Running Locally
 
-Requires Python 3.13 and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/).
 
 Run these from `src/backend`:
 
@@ -453,7 +453,7 @@ The server creates and seeds the database on first start. Running the seed comma
 From the repository root, once:
 
 ```powershell
-py -3.13 -m venv src\backend\.venv
+py -3.12 -m venv src\backend\.venv
 .\src\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest
 ```
 

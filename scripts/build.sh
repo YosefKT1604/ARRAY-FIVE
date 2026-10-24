@@ -3,6 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Replit points uv at its own environment folder; use ours, so uv sync and uv run agree.
+export UV_PROJECT_ENVIRONMENT="$(pwd)/src/backend/.venv"
+
 if ! python -m uv --version >/dev/null 2>&1; then
   python -m pip install uv
 fi

@@ -4,7 +4,7 @@ Audited from branch `backend` at commit `6ec6ca2` ("Add approve and reject endpo
 `docs/CONTRACTS.md` and `fixtures/demo/*.json` on `backend` are identical to the copies on `p1-frontend`.
 
 ## How to run the backend locally
-- Python **3.13** is required (`pyproject.toml`, `.python-version`). The project uses **uv**.
+- Python **3.12 or newer** is required (`pyproject.toml`, `.python-version`). The project uses **uv**.
 - From `src/backend`: `uv sync`, then `uv run python -m app.db.seed` (creates `orbyte.db` and loads `fixtures/demo/seed.json`), then `uv run uvicorn app.main:app --reload --port 8000`.
 - `main.py` doesn't create tables, so **the seed must run before first start**. Re-running the seed **resets the whole demo** (it drops all tables).
 - No CORS middleware. The frontend uses the Vite dev proxy (`/api` → `http://localhost:8000`), so this is fine for development.

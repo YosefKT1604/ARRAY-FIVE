@@ -11,7 +11,7 @@ Stack: React, TypeScript, Vite, Tailwind, TanStack Query, MSW (mock API), Vitest
 
 ## Setup (Windows PowerShell)
 
-You need Node 20+ and, for the real backend, Python 3.13 (with `uv`, or a plain venv: see "Running Locally" in the root README). Once, from the repository root:
+You need Node 20+ and, for the real backend, Python 3.12 or newer (with `uv`, or a plain venv: see "Running Locally" in the root README). Once, from the repository root:
 
 ```powershell
 cd frontend
