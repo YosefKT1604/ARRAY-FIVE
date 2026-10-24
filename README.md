@@ -19,7 +19,6 @@
 |---|---|
 | GitHub Repository | https://github.com/YosefKT1604/ARRAY-FIVE |
 | Live Demo | https://array-five.replit.app |
-| RunPod Endpoint | https://api.runpod.ai/v2/your-endpoint-id |
 | Slide Deck | https://canva.link/yxdppt9l7r4bfl2 |
 | Demo Video | https://example.com/demo-video |
 ---
@@ -81,7 +80,6 @@ A Kuala Lumpur event planner hears from a supplier, the day before two events, t
 | Backend | Python 3.12, FastAPI, Uvicorn, Pydantic 2, SQLAlchemy 2 |
 | Database | SQLite (seeded with synthetic demo data) |
 | AI | Google Gemini API (Gemini 3.1 Flash-Lite, free tier) through a replaceable LiteLLM adapter, with rule-based fallbacks |
-| AI / Compute | RunPod — TODO: describe what runs on RunPod |
 | Hosting | Replit Deployments (one service serves the API and the React frontend); Replit Secrets for the API key |
 | Testing | pytest (backend), Vitest, Playwright and Mock Service Worker (frontend) |
 | CI / Version control | GitHub and GitHub Actions (tests run on every change) |
