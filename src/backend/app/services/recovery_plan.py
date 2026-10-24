@@ -25,7 +25,7 @@ def with_new_id(plan: RecoveryPlan, plan_id: str) -> RecoveryPlan:
 def create_recovery_plans(db: Session, disruption: Disruption) -> list[RecoveryPlan]:
     incident = NormalizedIncident.model_validate(disruption.incident)
     impact = ImpactResult.model_validate(disruption.impact)
-    # Fresh snapshot rather than the one from analysis: the business data may have changed in between.
+    # Analysis stores only the impact result, not the snapshot, so it is rebuilt here.
     snapshot = build_snapshot(db, incident)
     count = db.scalar(select(func.count()).select_from(RecoveryPlanRecord))
 

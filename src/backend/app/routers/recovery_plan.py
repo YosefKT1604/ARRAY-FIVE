@@ -22,7 +22,8 @@ def get_plan_or_404(db: Session, plan_id: str) -> RecoveryPlanRecord:
         raise HTTPException(status_code=404, detail=f"Recovery plan {plan_id} not found")
     return record
 
-# Shared by approve, reject and request-info. Permission comes first, so staff can't learn anything about the plan.
+# Shared by approve, reject and request-info. Permission comes first, so a non-owner always gets a 403 (and is logged),
+# never a version or status error.
 def check_can_decide(db: Session, record: RecoveryPlanRecord, user: CurrentUser, data: DecisionRequest) -> RecoveryPlan:
     if not can_decide(user):
         log_activity(db, record.disruption_id, ActivityType.APPROVAL_DENIED, actor_id=user.id, plan_id=record.id,

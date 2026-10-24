@@ -45,7 +45,7 @@ def analyze(db: DbSession, disruption_id: str) -> ImpactResult:
     disruption = get_disruption_or_404(db, disruption_id)
     if disruption.status == DisruptionStatus.NEEDS_CLARIFICATION:
         raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION, detail="Disruption needs clarification before it can be analyzed")
-    # Re-analysing after plans exist would reopen a finished disruption and allow a second batch of plans.
+    # Re-analysing once plans exist would set the status back to analyzed and allow a second batch of plans.
     if disruption.status not in (DisruptionStatus.RECEIVED, DisruptionStatus.ANALYZED):
         raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION,
                        detail=f"Disruption {disruption_id} is already {disruption.status}")

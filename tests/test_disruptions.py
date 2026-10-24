@@ -63,7 +63,7 @@ def test_decided_disruption_can_be_reported_again(client):
     client.post("/api/v1/disruptions/D-001/recovery-plans")
     client.post("/api/v1/recovery-plans/RP-001/approve", json={"plan_version": 1}, headers={"X-User-Id": "U-01"})
 
-    # Once a plan is approved the disruption is closed, so the same report is a new problem.
+    # Once a plan is approved the disruption is decided, so the same report counts as a new problem.
     response = client.post("/api/v1/disruptions", json=FORM)
     assert response.status_code == 201
 
