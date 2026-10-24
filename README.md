@@ -234,7 +234,7 @@ The system was split into five modules built in parallel against shared data con
 | P4 | Recovery planning: plan generator, deterministic validator, ranking | Raymond Russel Willim | raymondwillim|
 | P5 | AI module: Gemini adapter, message extraction, explanations, drafts, evaluation sets | Erwin Okto Wu | ErwinOW |
 
-Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.com/YosefKT1604)), Nicholas Dillon[@DillonNicholas](https://github.com/DillonNicholas), Erwin Okto Wu [@ErwinOW](https://github.com/ErwinOW), Joshua Michael Nathaniel Tjoa [@Ojojo37](https://github.com/Ojojo37), Raymond Russel Willim [@raymondwillim](https://github.com/raymondwillim).
+Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.com/YosefKT1604)), Nicholas Dillon [@DillonNicholas](https://github.com/DillonNicholas), Erwin Okto Wu [@ErwinOW](https://github.com/ErwinOW), Joshua Michael Nathaniel Tjoa [@Ojojo37](https://github.com/Ojojo37), Raymond Russel Willim [@raymondwillim](https://github.com/raymondwillim).
 
 **Mentoring:** Alpha Red (SDC sponsor) reviewed our system architecture and validation approach.
 
