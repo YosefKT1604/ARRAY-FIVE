@@ -41,4 +41,14 @@ describe('demo clock', () => {
     expect(relativeTime('2026-10-22T10:00:10Z', now)).toBe('just now')
     expect(relativeTime('2026-10-22T07:00:00Z', now)).toBe('3 h ago')
   })
+  it('counts "ago" from the demo clock (20 Oct, 08:00), not the real one', () => {
+    // 30 min before the demo clock reads as 30 min ago, whatever today's real date is.
+    expect(relativeTime('2026-10-20T07:30:00+08:00')).toBe('30 min ago')
+    expect(relativeTime('2026-10-18T08:00:00+08:00')).toBe('2 days ago')
+  })
+  it('shows a date and time when the moment is after the demo clock', () => {
+    // A real timestamp from 24 Oct is not "ago" on a clock that says 20 Oct.
+    expect(relativeTime('2026-10-24T09:00:00+08:00')).toBe(formatDateTime('2026-10-24T09:00:00+08:00'))
+    expect(relativeTime('2026-10-24T09:00:00+08:00')).not.toMatch(/ago/)
+  })
 })

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ApiError } from '../api/errors'
-import { approvePlan, discardPlanEdit, editPlan, getActivityLog, getExplanation, getPlan, rejectPlan, requestInfo, revalidatePlan } from '../api/endpoints'
+import { approvePlan, discardPlanEdit, editPlan, getActivityLog, getExplanation, getPlan, getPlanVersion, listPlans, rejectPlan, requestInfo, revalidatePlan } from '../api/endpoints'
 import { AiBadge } from '../components/AiBadge'
 import { CheckList } from '../components/CheckList'
 import { PlanCost } from '../components/PlanCost'
@@ -34,13 +34,21 @@ function supplierIds(plan: RecoveryPlan): string[] {
 export function PlanReview() {
   const { planId = '' } = useParams()
   const queryClient = useQueryClient()
-  const names = useNames()
   const session = useSession()
   const user = USERS.find((u) => u.id === session.userId)!
 
   const planQuery = useQuery({ queryKey: ['plan', planId], queryFn: () => getPlan(planId) })
   const plan = planQuery.data
   const disruptionId = plan?.disruption_id
+  // The other plans of this problem, so a mention of one reads as words instead of an ID.
+  const siblings = useQuery({ queryKey: ['plans', disruptionId], queryFn: () => listPlans(disruptionId!), enabled: !!disruptionId })
+  const names = useNames(siblings.data?.items ?? (plan ? [plan] : []))
+  // Version 1 is what "edited from the original" has to show; the current version is the edit itself.
+  const original = useQuery({
+    queryKey: ['plan-version', planId, 1],
+    queryFn: () => getPlanVersion(planId, 1),
+    enabled: !!plan && isDemoEdit(plan),
+  })
   const explanation = useQuery({
     queryKey: ['explanation', disruptionId],
     queryFn: () => getExplanation(disruptionId!),
@@ -50,7 +58,7 @@ export function PlanReview() {
   const approvedLog = useQuery({
     queryKey: ['activity', disruptionId],
     queryFn: () => getActivityLog(disruptionId!),
-    enabled: !!disruptionId && plan?.status === 'approved',
+    enabled: !!disruptionId && (plan?.status === 'approved' || plan?.status === 'rejected'),
   })
   const [comment, setComment] = useState('')
   const [commentError, setCommentError] = useState<string | null>(null)
@@ -125,6 +133,10 @@ export function PlanReview() {
   const shown = new Set([...failing.map((c) => c.detail), ...questions])
   const watchOut = (comparison?.limitations ?? []).filter((l) => !shown.has(l))
   const editable = plan.actions.filter((a) => typeof (a.parameters as Record<string, unknown>).quantity === 'number')
+  const originalChanges = (original.data?.actions ?? [])
+    .filter((a) => typeof (a.parameters as Record<string, unknown>).quantity === 'number')
+    .map((a) => names.humanize(describeAction(a, names, formatDate)))
+    .join('; ')
   const suppliers = supplierIds(plan).map((id) => names.label(id, 'supplier'))
 
   const isOwner = user.role === 'owner'
@@ -146,7 +158,9 @@ export function PlanReview() {
   const lastError = [approve, reject, askInfo, edit, recheck, discard].map((m) => m.error).find(Boolean)
   const staleError = lastError instanceof ApiError && lastError.isStale
   const benefits = safeBenefits(comparison?.benefits ?? [], plan, names.humanize)
-  const approval = approvedLog.data?.items.find((e) => e.plan_id === plan.id && e.activity_type === 'plan_approved')
+  const approval = approvedLog.data?.items.find(
+    (e) => e.plan_id === plan.id && e.activity_type === (plan.status === 'rejected' ? 'plan_rejected' : 'plan_approved'),
+  )
   const approver = approval ? actorName(approval.actor_id) : null
 
   function needComment(run: () => void) {
@@ -178,7 +192,7 @@ export function PlanReview() {
         </p>
         {demoEdit && (
           <p className="mt-1 text-sm font-medium text-warn">
-            Edited from the original plan: {editable.map((a) => names.humanize(describeAction(a, names, formatDate))).join('; ') || 'changed details'}
+            Edited from the original plan: {originalChanges || 'changed details'}
           </p>
         )}
       </div>
@@ -298,7 +312,17 @@ export function PlanReview() {
         </section>
       )}
 
-      {/* ---- Decision ---- */}
+      {plan.status === 'rejected' && (
+        <section className="rounded-2xl border border-line bg-card p-5" data-testid="rejected-box">
+          <p className="font-semibold">
+            Rejected{approver ? ` by ${approver}` : ''}
+            {approval ? ` at ${formatTimeOfDay(approval.created_at)}` : ''}.
+          </p>
+        </section>
+      )}
+
+      {/* ---- Decision: only while the plan is still open. Once decided, the decision above is all that is shown. ---- */}
+      {proposed && (
       <section className={cn(card, 'space-y-4')} aria-labelledby="decide">
         <h2 id="decide" className="text-lg font-semibold">
           Your decision
@@ -448,6 +472,7 @@ export function PlanReview() {
           </div>
         )}
       </section>
+      )}
     </div>
   )
 }

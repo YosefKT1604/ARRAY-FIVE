@@ -219,6 +219,12 @@ export const mockedBackendHandlers: RequestHandler[] = [
     const p = state.plans.find((x) => x.id === params.id)
     return p ? HttpResponse.json(overlay(p)) : notFound('Recovery plan', params.id, `/recovery-plans/${params.id}`)
   }),
+  // The mock keeps the original plans untouched; edits live in an overlay, so version 1 is always the stored plan.
+  http.get(url('/recovery-plans/:id/versions/:version'), ({ params }) => {
+    const p = state.plans.find((x) => x.id === params.id)
+    const instance = `/recovery-plans/${params.id}/versions/${params.version}`
+    return p && p.version === Number(params.version) ? HttpResponse.json(p) : notFound('Recovery plan version', params.version, instance)
+  }),
   http.post(url('/recovery-plans/:id/approve'), (ctx) => decideBuiltIn(ctx, 'approved', 'approve')),
   http.post(url('/recovery-plans/:id/reject'), (ctx) => decideBuiltIn(ctx, 'rejected', 'reject')),
   http.post(url('/recovery-plans/:id/request-info'), (ctx) => decideBuiltIn(ctx, 'more_info_requested', 'request-info')),

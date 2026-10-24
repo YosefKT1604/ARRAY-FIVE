@@ -15,6 +15,7 @@ A plan's validation status is copied from Person 4's ValidationResult, never wor
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -42,6 +43,7 @@ IMPACT_STATUS_LABELS = {
     ImpactStatus.POTENTIAL_RISK: "Possible risk",
     ImpactStatus.UNRESOLVED: "Not yet known",
 }
+WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 # Order used to list plans when they have no rank: usable plans first.
 STATUS_ORDER = {ValidationStatus.FEASIBLE: 0, ValidationStatus.NEEDS_CONFIRMATION: 1, ValidationStatus.INFEASIBLE: 2}
@@ -137,6 +139,11 @@ def fmt_date(value: date | None) -> str:
     return f"{value.day} {MONTHS[value.month - 1]}" if value else "an unknown date"
 
 
+def fmt_day(value: date | None) -> str:
+    """A date with its weekday, e.g. "Wed 21 Oct"."""
+    return f"{WEEKDAY_NAMES[value.weekday()]} {fmt_date(value)}" if value else "an unknown date"
+
+
 def fmt_money(money: Money) -> str:
     """A money amount, e.g. "RM 80.00"."""
     prefix = "RM" if money.currency == "MYR" else money.currency
@@ -185,7 +192,9 @@ def order_plans(plans: list[RecoveryPlan]) -> list[RecoveryPlan]:
 
 def summary(incident: NormalizedIncident, impact: ImpactResult, plans: list[RecoveryPlan],
             snapshot: BusinessSnapshot | None) -> str:
-    """Two or three sentences: what happened, what it affects, and how many plans are usable."""
+    """What happened, what it affects, and the best option. Plain sentences when business names are known."""
+    if snapshot is not None:
+        return _plain_summary(incident, impact, plans, snapshot)
     who = label(incident.supplier_id, snapshot) if incident.supplier_id else "A supplier"
     qty = f"{incident.quantity_affected} " if incident.quantity_affected else "some "
     items = qty + _items_name(incident, snapshot)
@@ -205,6 +214,71 @@ def summary(incident: NormalizedIncident, impact: ImpactResult, plans: list[Reco
 
     feasible = [p.id for p in plans if status_of(p) == ValidationStatus.FEASIBLE]
     text += f" {len(plans)} recovery plan(s) were checked; feasible: {', '.join(feasible) if feasible else 'none'}."
+    return text
+
+
+def _join(names: list[str]) -> str:
+    """"A", "A and B", "A, B and C"."""
+    return names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
+
+
+def _plain_money(money: Money) -> str:
+    """"RM 80" for a whole amount, "RM 56.50" otherwise."""
+    prefix = "RM" if money.currency == "MYR" else money.currency
+    return f"{prefix} {money.amount:.0f}" if money.amount == money.amount.to_integral() else f"{prefix} {money.amount:.2f}"
+
+
+def _weekday_dates(text: str, year: int) -> str:
+    """Adds the weekday to bare dates ("21 Oct" -> "Wed 21 Oct"), for the plan text written by Person 4."""
+    def add(match: re.Match) -> str:
+        """One date: leave it alone if it cannot be read."""
+        try:
+            return fmt_day(date(year, MONTHS.index(match["month"]) + 1, int(match["day"])))
+        except ValueError:
+            return match.group()
+    return re.sub(rf"(?<![\w-])(?P<day>\d{{1,2}}) (?P<month>{'|'.join(MONTHS)})\b", add, text)
+
+
+def _plain_summary(incident: NormalizedIncident, impact: ImpactResult, plans: list[RecoveryPlan],
+                   snapshot: BusinessSnapshot) -> str:
+    """The summary as plain sentences for a busy owner: no IDs, no counts of records, dates with weekdays."""
+    supplier = next((s for s in snapshot.suppliers if s.id == incident.supplier_id), None)
+    who = f"from {supplier.name}" if supplier else ""
+    qty = f"{incident.quantity_affected} " if incident.quantity_affected else "some "
+    items = qty + _items_name(incident, snapshot)
+    old, new = incident.original_arrival_date, incident.new_arrival_date
+    if incident.type == DisruptionType.SUPPLIER_SHORTFALL:
+        text = f"{supplier.name if supplier else 'A supplier'} cannot supply {items} (originally due {fmt_day(old)})."
+    else:
+        late = f" {(new - old).days} day{'' if (new - old).days == 1 else 's'} late" if old and new and new > old else " late"
+        when = f" ({fmt_day(new)} instead of {fmt_day(old)})" if old and new else ""
+        text = f"{items} {who} will arrive{late}{when}.".replace("  ", " ")
+
+    jobs = {j.id: j for j in snapshot.jobs}
+    resource = next((r for r in snapshot.resources if r.id == incident.resource_id), None)
+    hit = [jobs[e.entity_id] for e in impact.affected_entities if e.entity_id in jobs]
+    if hit:
+        unit = resource.unit if resource else "item"
+        for day in sorted({j.event_date for j in hit}):
+            names = [f"the {j.name}" for j in hit if j.event_date == day]
+            short = next((s.shortfall for s in impact.resource_shortfalls
+                          if s.date == day and s.resource_id == incident.resource_id), None)
+            gap = f": short {short} {unit}{'' if short == 1 else 's'}" if short else ""
+            text += f" This hits {_join(names)} on {fmt_day(day)}{gap}."
+    elif not impact.affected_entities:
+        text += " No affected records were found."
+    clear = [jobs[c.entity_id] for c in impact.checked_not_affected if c.entity_id in jobs]
+    if clear:
+        names = [f"{j.name} ({fmt_day(j.event_date)})" for j in clear]
+        text += f" Not affected: {_join(names)}."
+
+    best = next((p for p in plans if status_of(p) == ValidationStatus.FEASIBLE), None)
+    if best is not None:
+        step = _weekday_dates(best.summary.rstrip("."), (new or old or incident.reported_at.date()).year)
+        cost = f" ({_plain_money(best.estimated_cost)})" if best.estimated_cost is not None else ""
+        text += f" Best option: {step[:1].lower()}{step[1:]}{cost}."
+    else:
+        text += f" None of the {len(plans)} options we checked is confirmed to work yet."
     return text
 
 

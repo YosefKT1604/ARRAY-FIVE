@@ -71,12 +71,12 @@ describe('WhatsApp simulator page', () => {
     expect(await screen.findByText('Not filed: 500 chairs is more than the 40 on this delivery.')).toBeInTheDocument()
   })
 
-  it('offers an unknown sender with a number and saved name', async () => {
-    const user = userEvent.setup()
+  it('only offers saved supplier contacts in "Send as"', async () => {
     renderPage()
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Send as' }), 'Someone else (type a number)')
-    expect(screen.getByRole('textbox', { name: 'Phone number' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: "Saved in owner's phone as (optional)" })).toBeInTheDocument()
+    const select = await screen.findByRole('combobox', { name: 'Send as' })
+    await within(select).findByRole('option', { name: 'Maju Rental Supplies' })
+    expect(within(select).queryByRole('option', { name: /Someone else/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Phone number' })).not.toBeInTheDocument()
   })
 })
 
@@ -128,11 +128,12 @@ describe('automatic reports from WhatsApp', () => {
     expect(state.disruptions).toHaveLength(0)
   })
 
-  it('shows "Reported automatically as D-001" in the inbox', async () => {
+  it('shows "Reported automatically. See the problem" in the inbox, with no ID', async () => {
     mockReceive({ text: incident.supplier_message.text, from_contact: incident.supplier_message.from_contact })
     renderPage()
-    expect(await screen.findByText(/Reported automatically as/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'D-001' })).toHaveAttribute('href', '/disruptions/D-001/impact')
+    expect(await screen.findByText(/Reported automatically\./)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'See the problem' })).toHaveAttribute('href', '/disruptions/D-001/impact')
+    expect(screen.queryByText(/D-001/)).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Check and report' })).not.toBeInTheDocument()
   })
 

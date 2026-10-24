@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.dependencies import DbSession
 from app.errors import ApiError, ErrorCode
 from app.models.disruption import Disruption
-from app.models.recovery_plan import RecoveryPlanRecord
+from app.models.recovery_plan import RecoveryPlanRecord, RecoveryPlanVersionRecord
 from app.schemas.approval import ApprovalOut, DecisionRequest
 from app.services.activity_log import log_activity
 from app.services.approval import record_decision
@@ -43,6 +43,18 @@ def check_can_decide(db: Session, record: RecoveryPlanRecord, user: CurrentUser,
 @router.get("/{plan_id}", response_model=RecoveryPlan)
 def get_recovery_plan_by_id(plan_id: str, db: DbSession) -> RecoveryPlan:
     return to_contract(get_plan_or_404(db, plan_id))
+
+# Read-only look at any version of a plan, e.g. the original (version 1) of an edited plan. The current version comes
+# from the plan's own row; older ones from the archive written when the plan was edited.
+@router.get("/{plan_id}/versions/{version}", response_model=RecoveryPlan)
+def get_recovery_plan_version(plan_id: str, version: int, db: DbSession) -> RecoveryPlan:
+    record = get_plan_or_404(db, plan_id)
+    if record.plan["version"] == version:
+        return to_contract(record)
+    archived = db.get(RecoveryPlanVersionRecord, (plan_id, version))
+    if archived is None:
+        raise HTTPException(status_code=404, detail=f"Recovery plan {plan_id} has no version {version}")
+    return RecoveryPlan.model_validate(archived.plan)
 
 @router.put("/{plan_id}", response_model=RecoveryPlan)
 def edit_plan(plan_id: str, data: PlanEdit, user: CurrentUserDep, db: DbSession) -> RecoveryPlan:

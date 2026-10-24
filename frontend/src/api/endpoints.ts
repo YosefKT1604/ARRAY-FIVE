@@ -43,6 +43,9 @@ export const getImpact = (id: string) => request<ImpactResult>('GET', `/disrupti
 export const generatePlans = (id: string) => request<PlanList>('POST', `/disruptions/${id}/recovery-plans`)
 export const listPlans = (id: string) => request<PlanList>('GET', `/disruptions/${id}/recovery-plans`)
 export const getPlan = (id: string) => request<RecoveryPlan>('GET', `/recovery-plans/${id}`)
+/** Any saved version of a plan, e.g. the original (version 1) of an edited plan. */
+export const getPlanVersion = (id: string, version: number) =>
+  request<RecoveryPlan>('GET', `/recovery-plans/${id}/versions/${version}`)
 export const approvePlan = (id: string, body: DecisionRequest) =>
   request<Approval>('POST', `/recovery-plans/${id}/approve`, body)
 export const rejectPlan = (id: string, body: DecisionRequest) =>

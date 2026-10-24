@@ -17,7 +17,8 @@ import { ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, btnSecondary, card, inputBase } from '../components/ui'
 import { API_MODE } from '../config'
 import { cn } from '../lib/cn'
-import type { DisruptionCreate, ExtractionResult } from '../types/contracts'
+import { formatDate } from '../lib/format'
+import type { Delivery, DisruptionCreate, ExtractionResult } from '../types/contracts'
 
 interface FormState {
   supplier_id: string
@@ -49,6 +50,15 @@ const REQUIRED_MESSAGE: Partial<Record<keyof FormState, string>> = {
   new_arrival_date: 'Enter the new arrival date',
 }
 
+/** "2026-10-21" -> "Wed 21 Oct" in free text. */
+const plainDates = (text: string) => text.replace(/\b\d{4}-\d{2}-\d{2}\b/g, (d) => formatDate(d))
+
+/** The extraction's evidence note in plain words: the sender's saved contact, dates by weekday. */
+function plainEvidence(note: string): string {
+  if (/sender contact/i.test(note)) return "from the sender's saved contact"
+  return plainDates(note)
+}
+
 function prefill(result: ExtractionResult): FormState {
   const d = result.draft_incident
   return {
@@ -58,7 +68,7 @@ function prefill(result: ExtractionResult): FormState {
     quantity_affected: d.quantity_affected != null ? String(d.quantity_affected) : '',
     original_arrival_date: d.original_arrival_date ?? '',
     new_arrival_date: d.new_arrival_date ?? '',
-    description: d.description ?? '',
+    description: plainDates(d.description ?? ''),
   }
 }
 
@@ -176,9 +186,17 @@ export function ReportDisruption() {
           </p>
         )}
         {!error && flagged && <p className="mt-1 text-sm text-warn">{unresolved.get(name)} Please fill this in.</p>}
-        {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">How we got this: {evidence}</p>}
+        {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">How we got this: {plainEvidence(evidence)}</p>}
       </div>
     )
+  }
+
+  // "Maju's delivery: 40 chairs, due Wed 21 Oct"
+  function deliveryOption(d: Delivery): string {
+    const s = suppliers.data?.items.find((x) => x.id === d.supplier_id)
+    const unit = resources.data?.items.find((r) => r.id === d.resource_id)?.unit
+    const what = unit ? `${d.quantity} ${unit}${d.quantity === 1 ? '' : 's'}` : `${d.quantity} items`
+    return `${s ? `${s.aliases?.[0] ?? s.name}'s delivery` : 'Delivery'}: ${what}, due ${formatDate(d.expected_date)}`
   }
 
   const loadingLists = suppliers.isLoading || resources.isLoading || deliveries.isLoading
@@ -309,7 +327,7 @@ export function ReportDisruption() {
               .filter((d) => !form.supplier_id || d.supplier_id === form.supplier_id)
               .map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.id}: {d.quantity} {resources.data?.items.find((r) => r.id === d.resource_id)?.unit ?? 'units'}(s), due {d.expected_date}
+                  {deliveryOption(d)}
                 </option>
               ))}
           </select>

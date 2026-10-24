@@ -53,9 +53,17 @@ export function relativeDay(value: string): string {
   return n > 0 ? `in ${n} days` : `${-n} days ago`
 }
 
-/** "5 min ago" for a real timestamp (reported_at is real wall-clock time). */
-export function relativeTime(value: string, now: number = Date.now()): string {
-  const mins = Math.floor((now - parseTimestamp(value).getTime()) / 60_000)
+/** The demo clock as a moment: the seed's `as_of` (08:00 on the demo date, Kuala Lumpur), the date shown in the header. */
+export const DEMO_NOW_MS = Date.parse(`${DEMO_TODAY}T08:00:00+08:00`)
+
+/**
+ * "5 min ago", counted from the demo clock (not the computer's), so it agrees with the date in the header.
+ * A time after the demo clock cannot be "ago", so it is shown as a date and time instead.
+ */
+export function relativeTime(value: string, now: number = DEMO_NOW_MS): string {
+  const ms = now - parseTimestamp(value).getTime()
+  if (ms < -60_000) return formatDateTime(value)
+  const mins = Math.floor(ms / 60_000)
   if (mins < 1) return 'just now'
   if (mins < 60) return `${mins} min ago`
   const hours = Math.floor(mins / 60)

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { formatDate } from './format'
+import type { RecoveryPlan } from '../types/contracts'
 import { listDependencies, listDeliveries, listJobs, listResources, listSuppliers } from '../api/endpoints'
 
 export type EntityKind = 'supplier' | 'delivery' | 'resource' | 'job' | 'commitment'
@@ -25,8 +26,11 @@ export function dropRepeatedIds(text: string, nameOf: (id: string) => string | u
   })
 }
 
+/** A plan's title as a phrase: no final full stop. */
+const formatPlanTitle = (summary: string) => summary.trim().replace(/\.$/, '')
+
 /** Turns entity IDs from the API into names people recognise. IDs stay opaque: types come from lookups. */
-export function useNames() {
+export function useNames(plans: RecoveryPlan[] = []) {
   const jobs = useQuery({ queryKey: ['jobs'], queryFn: listJobs })
   const suppliers = useQuery({ queryKey: ['suppliers'], queryFn: listSuppliers })
   const resources = useQuery({ queryKey: ['resources'], queryFn: listResources })
@@ -39,6 +43,22 @@ export function useNames() {
   const delivery = (id: string) => deliveries.data?.items.find((d) => d.id === id)
   const commitmentJobId = (id: string) =>
     dependencies.data?.items.find((d) => d.dependency_type === 'fulfils' && d.target_id === id)?.source_id
+
+  /** Plans and their actions are known only from the plans the page passes in. */
+  const planById = (id: string) => plans.find((p) => p.id === id)
+  const actionOf = (id: string) => plans.flatMap((p) => p.actions).find((a) => a.id === id)
+
+  /** "RA-002" -> "this order" (or "this request"); a plan -> "the plan to rent 20 chairs from ...". */
+  function planOrActionLabel(id: string): string | undefined {
+    if (/^RA-\d+$/.test(id)) {
+      const type = actionOf(id)?.action_type
+      return type === 'contact_supplier' ? 'this request' : type && type !== 'source_alternative_supplier' ? 'this step' : 'this order'
+    }
+    const plan = /^RP-\d+$/.test(id) ? planById(id) : undefined
+    if (!plan) return undefined
+    const text = formatPlanTitle(plan.summary)
+    return `the plan to ${text.charAt(0).toLowerCase()}${text.slice(1)}`
+  }
 
   function kindOf(id: string, hint?: EntityKind): EntityKind | undefined {
     if (hint) return hint
@@ -86,6 +106,12 @@ export function useNames() {
    * Unknown IDs are left alone. Keep the raw text in a "Details" section.
    */
   function humanize(text: string): string {
+    const out = humanizeInner(text)
+    // An ID that started the text became a lower-case phrase ("the plan to ..."); keep the sentence capitalised.
+    return /^(?:RA|RP)-\d+/.test(text) ? `${out.charAt(0).toUpperCase()}${out.slice(1)}` : out
+  }
+
+  function humanizeInner(text: string): string {
     const nameOf = (id: string) => {
       const kind = kindOf(id)
       if (kind === 'commitment') {
@@ -97,6 +123,10 @@ export function useNames() {
     return dropRepeatedIds(text, nameOf)
       .replace(/\b\d{4}-\d{2}-\d{2}\b/g, (d) => formatDate(d))
       .replace(/\b(?:[A-Z]{1,3})-\d{2,4}\b/g, (id) => {
+        const planOrAction = planOrActionLabel(id)
+        if (planOrAction) return planOrAction
+        // An action ID never reaches the screen, even when its plan is not loaded.
+        if (/^RA-\d+$/.test(id)) return 'this order'
         const kind = kindOf(id)
         if (!kind) return id
         if (kind === 'commitment') return label(id).replace('Commitment for', 'the commitment for')

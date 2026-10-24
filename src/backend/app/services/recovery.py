@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from pydantic import ValidationError
@@ -31,6 +32,19 @@ def generate_plans(incident: NormalizedIncident, snapshot: BusinessSnapshot, imp
                        detail=f"Plans can't be made yet: {error}") from error
     return [from_p4(plan) for plan in result.plans], result.warnings, result.next_steps()
 
+# Person 4's edit_plan keeps the old title and adds " (edited, vN)" each time. The version belongs in the badge, so the
+# title is rebuilt here: the suffixes go, and each changed quantity is swapped in ("Rent 20 chairs" -> "Rent 10 chairs").
+def retitle(summary: str, old_actions: list[Any], new_actions: list[Any]) -> str:
+    text = re.sub(r"(?: \(edited, v\d+\))+$", "", summary)
+    before = {a.id: a.parameters.get("quantity") for a in old_actions}
+    for action in new_actions:
+        was, now = before.get(action.id), action.parameters.get("quantity")
+        if isinstance(was, int) and isinstance(now, int) and was != now:
+            # "20 chairs" -> "10 chairs"; a single item takes the singular ("1 chair").
+            text = re.sub(rf"(?<![\d.]){was}(?![\d.])( \w+?)?(s?)\b",
+                          lambda m: f"{now}{(m[1] or '') + (m[2] if now != 1 else '')}", text, count=1)
+    return text
+
 # An edit is always a new, revalidated version; the old one comes back as "superseded".
 def edit_plan(plan: RecoveryPlan, base_version: int, actions: list[dict[str, Any]], assumptions: list[str] | None,
               incident: NormalizedIncident, snapshot: BusinessSnapshot, impact: ImpactResult) -> tuple[RecoveryPlan, RecoveryPlan]:
@@ -43,7 +57,9 @@ def edit_plan(plan: RecoveryPlan, base_version: int, actions: list[dict[str, Any
     except ValidationError as error:
         raise ApiError(status_code=422, code=ErrorCode.VALIDATION_ERROR,
                        detail="One of the actions is not valid; check its type, target and dates.") from error
-    return from_p4(old), from_p4(new)
+    new = from_p4(new)
+    new.summary = retitle(plan.summary, plan.actions, new.actions)
+    return from_p4(old), new
 
 def revalidate_plan(plan: RecoveryPlan, incident: NormalizedIncident, snapshot: BusinessSnapshot, impact: ImpactResult) -> RecoveryPlan:
     p4_incident, p4_snapshot, p4_impact = to_p4_inputs(incident, snapshot, impact)
