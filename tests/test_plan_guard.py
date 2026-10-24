@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from app.models.disruption import Disruption
-from app.services.recovery import placeholder_applies
 from app.services.recovery_plan import no_plans_state
 from contracts import ImpactResult, NormalizedIncident
 
@@ -43,16 +42,26 @@ def test_demo_case_still_gets_the_three_plans(seeded_client):
     assert seeded_client.get(f"{API}/disruptions/D-001").json()["plan_state"] is None
 
 
-def test_a_smaller_delay_gets_no_plans_and_says_planning_is_not_available(seeded_client):
-    """5 chairs late is a real shortfall, but the fixture plans were not made for it."""
+def test_a_smaller_delay_is_planned_for_that_delay(seeded_client):
+    """5 chairs late is planned on its own numbers, not with the demo's fixture plans."""
     assert report_and_analyze(seeded_client, quantity_affected=5).status_code == 200
+    response = seeded_client.post(f"{API}/disruptions/D-001/recovery-plans")
+    assert response.status_code == 201
+    best = next(plan for plan in response.json()["items"] if plan["rank"] == 1)
+    assert best["actions"][0]["parameters"]["quantity"] == 5
+    assert best["validation"]["status"] == "feasible"
+
+
+def test_no_plans_from_the_planner_says_planning_is_not_available(seeded_client, monkeypatch):
+    report_and_analyze(seeded_client)
+    monkeypatch.setattr("app.services.recovery.generate_plans", lambda *args: ([], ["a warning"], ["Call the suppliers."]))
     response = seeded_client.post(f"{API}/disruptions/D-001/recovery-plans")
     assert response.status_code == 200
     assert response.json() == {"items": [], "state": "planning_not_available"}
-    assert seeded_client.get(f"{API}/disruptions/D-001/recovery-plans").json() == response.json()
-    disruption = seeded_client.get(f"{API}/disruptions/D-001").json()
-    assert (disruption["status"], disruption["plan_state"]) == ("plans_ready", "planning_not_available")
-    assert "plans_generated" in activity_types(seeded_client)
+    log = seeded_client.get(f"{API}/disruptions/D-001/activity-log").json()["items"]
+    entry = next(e for e in log if e["activity_type"] == "plans_generated")
+    assert entry["details"]["next_steps"] == ["Call the suppliers."]
+    assert entry["details"]["warnings"] == ["a warning"]
 
 
 def test_nothing_affected_needs_no_recovery(seeded_client, session_factory):
@@ -119,21 +128,11 @@ def demo_pair():
     return incident, impact
 
 
-def test_placeholder_applies_only_to_the_exact_demo_case():
-    incident, impact = demo_pair()
-    assert placeholder_applies(incident, impact)
-    assert not placeholder_applies(incident.model_copy(update={"quantity_affected": 5}), impact)
-    assert not placeholder_applies(incident.model_copy(update={"delivery_id": "DL-02"}), impact)
-    changed = impact.model_copy(update={"resource_shortfalls": [impact.resource_shortfalls[0].model_copy(update={"shortfall": 5})]})
-    assert not placeholder_applies(incident, changed)
-    assert not placeholder_applies(incident, impact.model_copy(update={"resource_shortfalls": []}))
-
-
 def test_a_potential_risk_alone_is_never_an_all_clear():
     incident, impact = demo_pair()
     risky = impact.affected_entities[0].model_copy(update={"impact_status": "potential_risk"})
     only_risk = impact.model_copy(update={"affected_entities": [risky], "resource_shortfalls": []})
     nothing = impact.model_copy(update={"affected_entities": [], "resource_shortfalls": []})
-    assert no_plans_state(incident, only_risk) == "planning_not_available"
-    assert no_plans_state(incident, nothing) == "no_recovery_needed"
-    assert no_plans_state(incident, impact) is None
+    assert no_plans_state(only_risk) == "planning_not_available"
+    assert no_plans_state(nothing) == "no_recovery_needed"
+    assert no_plans_state(impact) is None

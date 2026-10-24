@@ -4,12 +4,12 @@ import { hybridOverlayHandlers, missingEndpointHandlers, mockedBackendHandlers }
 
 /**
  * mock:   MSW answers everything.
- * hybrid: MSW answers only what the backend lacks (plus demo-only overlays); the rest passes through.
+ * hybrid: the backend now has every endpoint, so MSW only keeps its overlays (which pass through unless a mock edit exists).
  * real:   MSW is never started.
  */
 export const handlers =
   API_MODE === 'mock'
     ? [...mockedBackendHandlers, ...missingEndpointHandlers]
-    : [...missingEndpointHandlers, ...hybridOverlayHandlers]
+    : [...hybridOverlayHandlers]
 
 export const worker = setupWorker(...handlers)

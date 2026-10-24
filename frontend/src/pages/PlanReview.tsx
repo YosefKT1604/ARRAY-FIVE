@@ -91,7 +91,7 @@ export function PlanReview() {
     },
     onSuccess: (result) => {
       queryClient.setQueryData(['plan', planId], result)
-      setNotice(`Edited and re-checked (demo only). This is now version ${result.version}.`)
+      setNotice(`Edited and re-checked. This is now version ${result.version}.`)
       setMode('idle')
       refresh()
     },
@@ -108,7 +108,7 @@ export function PlanReview() {
     mutationFn: () => revalidatePlan(planId),
     onSuccess: (result) => {
       queryClient.setQueryData(['plan', planId], result)
-      setNotice('Re-checked just now (demo only).')
+      setNotice('Re-checked just now.')
       refresh()
     },
   })
@@ -169,7 +169,7 @@ export function PlanReview() {
           {status && <StatusBadge status={status} />}
           <PlanStatusBadge status={plan.status} />
           {demoEdit && (
-            <span className="rounded-full bg-warn-bg px-2.5 py-1 text-xs font-semibold text-warn">Version {plan.version}, edited (demo only)</span>
+            <span className="rounded-full bg-warn-bg px-2.5 py-1 text-xs font-semibold text-warn">Version {plan.version}, edited</span>
           )}
         </div>
         <h1 className="mt-2 text-3xl leading-tight font-semibold">{names.humanize(plan.summary)}</h1>
@@ -178,7 +178,7 @@ export function PlanReview() {
         </p>
         {demoEdit && (
           <p className="mt-1 text-sm font-medium text-warn">
-            Edited from the original plan (demo only): {editable.map((a) => names.humanize(describeAction(a, names, formatDate))).join('; ') || 'changed details'}
+            Edited from the original plan: {editable.map((a) => names.humanize(describeAction(a, names, formatDate))).join('; ') || 'changed details'}
           </p>
         )}
       </div>
@@ -306,9 +306,9 @@ export function PlanReview() {
 
         <p className="text-sm" data-testid="version-note">
           Approve applies to <strong>version {plan.version}</strong>
-          {demoEdit ? ' (your demo edit)' : ''}.
+          {demoEdit ? ' (your edit)' : ''}.
         </p>
-        {demoEdit && (
+        {demoEdit && API_MODE === 'mock' && (
           <div className="flex flex-wrap items-center gap-3 rounded-xl bg-warn-bg p-3 text-sm">
             <span>This version exists only in the demo. The server still has the original.</span>
             <button className={btnSecondary} disabled={busy || !proposed} onClick={() => discard.mutate()}>
@@ -370,10 +370,10 @@ export function PlanReview() {
         {mode === 'editing' && (
           <div className="space-y-3 rounded-xl border border-line bg-paper p-4">
             <p className="font-semibold">
-              Edit this plan <span className="rounded-full bg-warn-bg px-2 py-0.5 text-xs text-warn">Demo only</span>
+              Edit this plan
             </p>
             <p className="text-xs text-muted">
-              Editing isn't built on the backend yet. Saving creates a new version and re-checks it with scripted demo rules (for example, 20 → 10 chairs).
+              Saving creates a new version and checks it again. The old version is kept but can no longer be approved.
             </p>
             {editable.map((a) => (
               <label key={a.id} className="block text-sm">
@@ -427,7 +427,7 @@ export function PlanReview() {
 
         {proposed && mayAct && (
           <button className="text-sm font-semibold text-brand underline" disabled={recheck.isPending} onClick={() => recheck.mutate()}>
-            {recheck.isPending ? 'Re-checking…' : 'Re-check this plan (demo only)'}
+            {recheck.isPending ? 'Re-checking…' : 'Re-check this plan'}
           </button>
         )}
 

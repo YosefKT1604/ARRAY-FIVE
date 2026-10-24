@@ -10,7 +10,8 @@ from app.services.activity_log import log_activity
 from app.services.approval import record_decision
 from app.services.identity import CurrentUser, CurrentUserDep
 from app.services.permissions import can_decide
-from app.services.recovery_plan import get_recovery_plan, to_contract
+from app.schemas.recovery_plan import PlanEdit
+from app.services.recovery_plan import edit_recovery_plan, get_recovery_plan, revalidate_recovery_plan, to_contract
 from contracts import Decision, PlanStatus, RecoveryPlan, ValidationStatus, DisruptionStatus
 from contracts.enums import ActivityType
 
@@ -42,6 +43,17 @@ def check_can_decide(db: Session, record: RecoveryPlanRecord, user: CurrentUser,
 @router.get("/{plan_id}", response_model=RecoveryPlan)
 def get_recovery_plan_by_id(plan_id: str, db: DbSession) -> RecoveryPlan:
     return to_contract(get_plan_or_404(db, plan_id))
+
+@router.put("/{plan_id}", response_model=RecoveryPlan)
+def edit_plan(plan_id: str, data: PlanEdit, user: CurrentUserDep, db: DbSession) -> RecoveryPlan:
+    record = get_plan_or_404(db, plan_id)
+    if not can_decide(user):
+        raise HTTPException(status_code=403, detail=f"{user.id} ({user.role}) may not edit plans")
+    return edit_recovery_plan(db, record, data.base_version, data.actions, data.assumptions, user.id)
+
+@router.post("/{plan_id}/revalidate", response_model=RecoveryPlan)
+def revalidate_plan(plan_id: str, user: CurrentUserDep, db: DbSession) -> RecoveryPlan:
+    return revalidate_recovery_plan(db, get_plan_or_404(db, plan_id), user.id)
 
 @router.post("/{plan_id}/approve", status_code=201, response_model=ApprovalOut)
 def approve_plan(plan_id: str, data: DecisionRequest, user: CurrentUserDep, db: DbSession) -> ApprovalOut:

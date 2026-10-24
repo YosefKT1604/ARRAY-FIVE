@@ -16,6 +16,8 @@
 
 **Project Name:** TBD
 
+> **Status:** Person 4's recovery planner is connected to the backend: plans are generated, checked by rules, ranked, edited (new version) and re-checked through the real API. Details: `docs/RECOVERY.md`.
+
 **Project Type:** AI-assisted business disruption and recovery system
 
 **Target Users:** Malaysian micro and small businesses

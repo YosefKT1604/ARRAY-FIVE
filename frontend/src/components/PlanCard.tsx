@@ -57,7 +57,7 @@ export function PlanCard({
         {plan.status !== 'proposed' && <PlanStatusBadge status={plan.status} />}
         {isDemoEdit(plan) && (
           <span className="rounded-full bg-warn-bg px-2.5 py-1 text-xs font-semibold text-warn">
-            Version {plan.version}, edited (demo only)
+            Version {plan.version}, edited
           </span>
         )}
       </div>

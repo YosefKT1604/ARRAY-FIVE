@@ -25,8 +25,8 @@ Audited from branch `backend` at commit `6ec6ca2` ("Add approve and reject endpo
 | POST / GET `/disruptions/{id}/recovery-plans` | ✅ (stub) | Returns the 3 fixture plans with **new IDs** (`RP-001…` numbering continues across disruptions). POST returns **201** and needs status `analyzed` (else 409) | Real. **Never hard-code `RP-001`**; use the IDs returned |
 | GET `/disruptions/{id}/explanation` | ✅ (P5, branch `integration`) | 200 once analyzed (also before plans exist); 409 `INVALID_STATE_TRANSITION` before analysis. Template text unless a model is configured (`generated_by`) | Real in hybrid; mock only in `mock` mode |
 | GET `/recovery-plans/{id}` | ✅ | — | Real |
-| PUT `/recovery-plans/{id}` (edit → new version) | ❌ | — | Mock, labelled "Demo only". Replays the fixture edit (20 → 10 chairs → infeasible, `QUANTITY_SUFFICIENT`, short 10); any other edit returns `needs_confirmation` ("Mock mode cannot validate this edit"). ⚠️ In hybrid mode the edited version exists only in the mock: reads, approve and reject of that plan are answered by the mock too (the real backend would return 409 stale version) |
-| POST `/recovery-plans/{id}/revalidate` | ❌ | — | Mock ("Demo only"): returns the plan with a fresh `validated_at`; no validation is computed |
+| PUT `/recovery-plans/{id}` (edit → new version) | ✅ (P4) | Body `{base_version, actions, assumptions}`; new version is revalidated, old one `superseded`; wrong `base_version` → 409 `STALE_PLAN_VERSION`; logged `plan_edited` | Real in hybrid; scripted mock in `mock` mode only |
+| POST `/recovery-plans/{id}/revalidate` | ✅ (P4) | Re-runs the rules on the stored plan; logged `plan_revalidated` | Real in hybrid; mock in `mock` mode only |
 | POST `/recovery-plans/{id}/approve` | ✅ | Body `{plan_version, comments}`. Returns **201** `Approval`. 403 non-owner, 409 wrong version, 409 already decided, 409 infeasible. **`needs_confirmation` CAN be approved** (matches §10 decision #2). Sets the disruption to `decided` | Real |
 | POST `/recovery-plans/{id}/reject` | ✅ | Same as approve | Real |
 | POST `/recovery-plans/{id}/request-info` | ✅ | Allowed on `proposed` and `more_info_requested` plans; owner only (403 is logged as `approval_denied`) | Real (mock only in `mock` mode). A plan that asked for info can still be approved or rejected |
@@ -49,4 +49,4 @@ Audited from branch `backend` at commit `6ec6ca2` ("Add approve and reject endpo
 4. Duplicate 409: add the existing disruption id as a field (e.g. `existing_id`) so the UI can link to it.
 5. Later, with P5: `/disruptions/extract`, `/explanation`, `/drafts` and `/drafts/{id}/approve`.
 
-**Still mocked (see `src/mocks/missing-endpoints.ts`):** PUT edit, revalidate. **Now real:** activity-log, request-info, duplicate-report 409, error `code`, auto-seed on startup, and (branch `integration`) extract, explanation, drafts, draft approve.
+**Still mocked in hybrid:** nothing (PUT edit and revalidate are real since Person 4's planner was connected). **Now real:** activity-log, request-info, duplicate-report 409, error `code`, auto-seed on startup, and (branch `integration`) extract, explanation, drafts, draft approve.

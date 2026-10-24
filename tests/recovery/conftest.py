@@ -6,7 +6,7 @@ import pytest
 
 from scdc.recovery.contracts import BusinessSnapshot, ImpactResult, NormalizedIncident
 
-FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "demo"
+FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "demo"
 
 
 def load(name: str) -> dict:

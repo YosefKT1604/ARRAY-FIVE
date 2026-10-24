@@ -1,5 +1,7 @@
 from enum import StrEnum
 
+from typing import Any
+
 from pydantic import BaseModel
 
 from contracts import RecoveryPlan
@@ -16,3 +18,11 @@ class PlanState(StrEnum):
 class RecoveryPlanList(BaseModel):
     items: list[RecoveryPlan]
     state: PlanState | None = None
+
+
+
+# Body of PUT /recovery-plans/{id}. Actions stay plain dicts: the planner validates them and gives plain-word errors.
+class PlanEdit(BaseModel):
+    base_version: int
+    actions: list[dict[str, Any]]
+    assumptions: list[str] | None = None
