@@ -140,6 +140,6 @@ describe('automatic reports from WhatsApp', () => {
   it('describes the log entry in plain words', () => {
     const ctx = { humanize: (t: string) => t, planTitle: () => undefined, disruptionDescription: undefined }
     const entry = { id: 'LOG-0002', disruption_id: 'D-001', plan_id: null, actor_id: 'system', activity_type: 'disruption_extracted', created_at: '', details: { message_id: 'WA-001', filed_automatically: true } }
-    expect(describeActivity(entry as ActivityLogEntry, ctx)).toBe('WhatsApp message WA-001 was read and this report was filed automatically.')
+    expect(describeActivity(entry as ActivityLogEntry, ctx)).toBe("The supplier's WhatsApp message was read and this report was filed automatically.")
   })
 })

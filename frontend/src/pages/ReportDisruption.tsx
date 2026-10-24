@@ -18,6 +18,8 @@ import { btnPrimary, btnSecondary, card, inputBase } from '../components/ui'
 import { API_MODE } from '../config'
 import { cn } from '../lib/cn'
 import { formatDate } from '../lib/format'
+import { mentionsSeveralItems, plainQuestion, SEVERAL_ITEMS_TIP } from '../lib/questions'
+import { useNames } from '../lib/useNames'
 import type { Delivery, DisruptionCreate, ExtractionResult } from '../types/contracts'
 
 interface FormState {
@@ -81,7 +83,10 @@ export function ReportDisruption() {
   const deliveries = useQuery({ queryKey: ['deliveries'], queryFn: listDeliveries })
 
   const [message, setMessage] = useState('')
+  const names = useNames()
   const [fromContact, setFromContact] = useState('')
+  // True while the contact reference came from the demo message, so it is dropped when the message is replaced.
+  const [demoContact, setDemoContact] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null)
   const [clientErrors, setClientErrors] = useState<Partial<Record<keyof FormState, string>>>({})
@@ -139,6 +144,10 @@ export function ReportDisruption() {
       navigate(`/disruptions/${disruption.id}/impact`)
     },
   })
+
+  // The API gets the contact reference; people see the supplier's name, never the reference.
+  const knownSender = suppliers.data?.items.find((s) => s.contact_reference && s.contact_reference === fromContact)
+  const senderShown = knownSender ? knownSender.name : fromContact.startsWith('whatsapp:') ? '' : fromContact
 
   const unresolved = new Map((extraction?.unresolved_fields ?? []).map((u) => [u.field, u.note ?? 'Not found in the message.']))
   const serverErrors = submit.error instanceof ApiError ? submit.error.fieldErrors : {}
@@ -233,7 +242,13 @@ export function ReportDisruption() {
         <textarea
           aria-label="Supplier message"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => {
+            setMessage(e.target.value)
+            if (demoContact) {
+              setFromContact('')
+              setDemoContact(false)
+            }
+          }}
           rows={4}
           placeholder="e.g. Boss, our chair delivery for tomorrow will be late…"
           className={cn(inputBase, 'mt-3 border-line')}
@@ -241,8 +256,11 @@ export function ReportDisruption() {
         <label className="mt-3 block text-sm">
           <span className="font-semibold">Who sent it? (optional)</span>
           <input
-            value={fromContact}
-            onChange={(e) => setFromContact(e.target.value)}
+            value={senderShown}
+            onChange={(e) => {
+              setFromContact(e.target.value)
+              setDemoContact(false)
+            }}
             placeholder="e.g. a WhatsApp number or contact name"
             className={cn(inputBase, 'mt-1 border-line')}
           />
@@ -262,6 +280,7 @@ export function ReportDisruption() {
             onClick={() => {
               setMessage(incidentFixture.supplier_message.text)
               setFromContact(incidentFixture.supplier_message.from_contact)
+              setDemoContact(true)
             }}
           >
             Use the demo message
@@ -284,9 +303,10 @@ export function ReportDisruption() {
             {extraction.needs_clarification && (
               <div>
                 <p className="font-semibold text-warn">We couldn't find everything:</p>
+                {mentionsSeveralItems(extraction.unresolved_fields) && <p className="mt-1">{SEVERAL_ITEMS_TIP}</p>}
                 <ul className="list-disc pl-5">
                   {extraction.clarification_questions.map((q) => (
-                    <li key={q}>{q}</li>
+                    <li key={q}>{plainQuestion(q, names.humanize)}</li>
                   ))}
                 </ul>
               </div>

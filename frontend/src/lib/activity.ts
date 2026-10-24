@@ -33,8 +33,8 @@ export function describeActivity(entry: ActivityLogEntry, ctx: ActivityContext):
     case 'disruption_extracted':
       if (typeof d.message_id === 'string')
         return d.duplicate
-          ? `WhatsApp message ${d.message_id} repeated this report, so no new report was made.`
-          : `WhatsApp message ${d.message_id} was read and this report was filed automatically.`
+          ? "The supplier's WhatsApp message repeated this report, so no new report was made."
+          : "The supplier's WhatsApp message was read and this report was filed automatically."
       return 'The supplier message was read to fill in the report.'
     case 'disruption_validated':
       return 'The report details were checked.'
