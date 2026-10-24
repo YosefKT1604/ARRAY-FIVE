@@ -364,6 +364,10 @@ Auth for the MVP: header `X-User-Id: U-01`. Backend looks up the role; no passwo
 
 ---
 
+> **Note: recovery planner v0.2 (proposed by Person 4, implemented in `src/backend/scdc/recovery`).** `validate_plan` and `rank_plans` take extra inputs compared with §5: `validate_plan(plan, snapshot, impact, incident)` needs the incident to know how the disruption changed the inbound deliveries, and `rank_plans(plans, impact, commitment_jobs, ..., requirements)` needs the impact and the job and requirement lookups. The API is unchanged. Editing keeps the plan ID: version N+1 replaces N in `GET /recovery-plans/{id}`, and N is stored as `superseded`.
+
+---
+
 ## 8. Error format
 
 All non-2xx responses:

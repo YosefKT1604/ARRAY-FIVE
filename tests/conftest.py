@@ -7,6 +7,12 @@ from app.db.seed import load_fixture
 from app.dependencies import get_db
 from app.main import app
 
+# The recovery planner takes the snapshot date as "today", so its results depend on the clock.
+# Every test runs on the demo day unless it sets its own.
+@pytest.fixture(autouse=True)
+def pinned_demo_day(monkeypatch):
+    monkeypatch.setenv("SCDC_DEMO_NOW", "2026-10-20T08:00:00+08:00")
+
 @pytest.fixture
 def session_factory():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)

@@ -1,13 +1,15 @@
 # P4 Recovery Planning — Integration Guide
 
-Module: `backend/scdc/recovery/` · Owner: Person 4 · Follows CONTRACTS.md v0.1 (§3–§6)
+Module: `src/backend/scdc/recovery/` · Owner: Person 4 · Follows CONTRACTS.md v0.1 (§3–§6)
+
+**Status: connected.** The backend calls this module through `src/backend/app/services/recovery.py` (the adapter):
+plans for every incident come from `plan_recovery`, and `PUT /recovery-plans/{id}` and `POST /recovery-plans/{id}/revalidate`
+use `edit_plan` and `revalidate`. The planner treats the snapshot date as "today", so run it with the demo clock
+(`SCDC_DEMO_NOW=2026-10-20T08:00:00+08:00`); the test suite sets it for you.
 
 ```
-cd backend
-pip install -e ".[dev]"            # or: pip install pydantic pytest
-python -m pytest tests/recovery -q # 42 tests
-python -m scdc.recovery.demo       # demo scenario, readable
-python -m scdc.recovery.demo --json > ../fixtures/demo/recovery_output.json   # mock data for P1/P5
+python -m pytest tests/recovery -q                  # from the repo root, 42 tests
+cd src/backend; python -m uv run python -m scdc.recovery.demo     # demo scenario, readable
 ```
 
 ## 1. Files

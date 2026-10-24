@@ -13,7 +13,7 @@ from pathlib import Path
 from .contracts import BusinessSnapshot, ImpactResult, NormalizedIncident
 from .pipeline import plan_recovery
 
-FIXTURES = Path(__file__).resolve().parents[3] / "fixtures" / "demo"
+FIXTURES = Path(__file__).resolve().parents[4] / "fixtures" / "demo"
 
 
 def main(argv: list[str]) -> None:

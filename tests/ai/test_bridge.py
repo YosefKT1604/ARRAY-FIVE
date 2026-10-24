@@ -31,7 +31,7 @@ def p2(session_factory):
         snapshot = build_snapshot(session, incident)
     impact = analyze_impact(incident, snapshot)
     return {"incident": incident, "snapshot": snapshot, "impact": impact,
-            "plans": generate_plans(incident, snapshot, impact)}
+            "plans": generate_plans(incident, snapshot, impact)[0]}
 
 
 def test_snapshot_from_database_converts(p2):
