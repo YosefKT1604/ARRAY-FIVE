@@ -83,8 +83,7 @@ A Kuala Lumpur event planner hears from a supplier, the day before two events, t
 | AI | Google Gemini API (Gemini 3.1 Flash-Lite, free tier) through a replaceable LiteLLM adapter, with rule-based fallbacks |
 | Hosting | Replit Deployments (one service serves the API and the React frontend); Replit Secrets for the API key |
 | Testing | pytest (backend), Vitest, Playwright and Mock Service Worker (frontend) |
-| CI / Version control | GitHub and GitHub Actions (tests run on every change) |
-
+| Version control | GitHub (one branch per module, merged through pull requests) |
 ## Architecture
 
 ```
