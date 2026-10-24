@@ -1,512 +1,272 @@
-<!-- PRODUCT NAME: decided at team call -->
-
-## Quick start
-
-1. Install Python 3.12 or newer, [uv](https://docs.astral.sh/uv/) and Node 20+.
-2. Backend, from `src\backend`: `python -m uv sync`
-3. Start it: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`
-4. Demo date: `$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"` (before step 3).
-5. Frontend, from `frontend`: `npm install; npm run dev`, then open http://localhost:5173.
-6. Reset the demo data, from `src\backend`: `python -m uv run python -m app.db.seed`
-7. Full run steps: [section 18](#18-running-locally). Frontend modes and demo script: [frontend/README.md](frontend/README.md).
-
-# Project README
-
-## 1. Project Overview
-
-**Project Name:** TBD
-
-> **Status:** Person 4's recovery planner is connected to the backend: plans are generated, checked by rules, ranked, edited (new version) and re-checked through the real API. Details: `docs/RECOVERY.md`.
-
-**Project Type:** AI-assisted business disruption and recovery system
-
-**Target Users:** Malaysian micro and small businesses
-
-### Summary
-
-This project helps small businesses respond to unexpected operational disruptions, such as supplier delays, unavailable equipment, staff absences, and overlapping deadlines.
-
-Instead of requiring business owners to manually check every affected job, the system analyzes business records, identifies downstream impacts, recommends feasible recovery plans, and allows the owner to approve actions before they are carried out.
-
-The system combines deterministic algorithms, structured business data, and AI-assisted interpretation and recommendations.
-
-## 2. Problem Statement
-
-Small businesses often manage their operations through messaging applications, spreadsheets, documents, and manual follow-ups.
-
-When a disruption occurs, owners may need to manually determine:
-- Which jobs or customer commitments are affected.
-- Which deadlines are at risk.
-- Which resources or suppliers can be used as alternatives.
-- What actions should be prioritized.
-- How to communicate changes to customers and suppliers.
-
-These manual processes can be slow, inconsistent, and difficult to manage when several commitments depend on the same resource or supplier.
-
-## 3. Objectives
-
-1. Identify business commitments affected by a disruption.
-2. Trace dependencies between jobs, resources, suppliers, and deadlines.
-3. Explain the direct and downstream consequences of an incident.
-4. Generate and compare practical recovery options.
-5. Validate proposed plans against known business constraints.
-6. Require human approval before consequential actions.
-7. Maintain an auditable history of decisions and outcomes.
-8. Establish an architecture that can later support different industries.
-
-## 4. Target Scenario
-
-The initial MVP will focus on a fictional event-planning business.
-
-Example:
-
-A supplier informs the business that 20 chairs will arrive one day late. The chairs are required for two events scheduled for the following day.
-
-The system should:
-1. Record the supplier disruption.
-2. Identify both affected events.
-3. Check event dates, chair requirements, inventory, and alternative suppliers.
-4. Explain which commitments are at risk.
-5. Compare feasible recovery options.
-6. Let the owner approve, edit, or reject a recommendation.
-7. Record the decision and prepare relevant follow-up messages.
-
-The architecture should be reusable for other businesses, but the MVP will prioritize completing this one scenario reliably.
-
-## 5. Main Features
-
-### 5.1 Business Context Management
-- Manage jobs, events, commitments, suppliers, and resources.
-- Store deadlines, quantities, availability, and dependencies.
-- Use synthetic data for the prototype.
-
-### 5.2 Disruption Input
-- Allow users to report a disruption through a structured form.
-- Support examples such as delayed deliveries and unavailable equipment.
-- Optionally extract information from a sample supplier message using AI.
-
-### 5.3 Impact Analysis
-- Identify directly affected commitments.
-- Trace downstream dependencies.
-- Highlight deadlines and resource shortages.
-- Distinguish confirmed facts from uncertain information.
-- Explain why each item is affected.
-
-### 5.4 Recovery Planning
-- Generate alternative recovery options.
-- Check resource availability and deadlines.
-- Estimate cost and operational trade-offs when data is available.
-- Rank feasible options according to business priorities.
-- Explain the strengths, weaknesses, and assumptions of each option.
-
-### 5.5 Human Approval
-- Allow authorized users to review recommendations.
-- Support approve, edit, and reject actions.
-- Revalidate plans after edits.
-- Prevent unapproved actions from being executed.
-
-### 5.6 Action Tracking
-- Prepare draft messages for suppliers or customers.
-- Create follow-up tasks.
-- Record approvals, rejections, edits, and status changes.
-- Show an activity history for the incident.
-
-### 5.7 Dashboard
-- Display active disruptions.
-- Summarize affected commitments.
-- Highlight urgent decisions.
-- Show recovery-plan status and outstanding approvals.
-
-## 6. System Design
-
-### High-Level Architecture
-
-    User Interface
-         |
-         v
-    Backend API
-         |
-         v
-    Disruption Processing Service
-         |
-         v
-    Business Context Retrieval
-         |
-         v
-    Impact Analysis Engine
-         |
-         v
-    Recovery Planning Engine
-         |
-         v
-    Constraint Validation Engine
-         |
-         v
-    Recommendation and Explanation Layer
-         |
-         v
-    Human Approval
-         |
-         v
-    Action Preparation and Activity Log
-
-    Supporting Components:
-    - Relational Database
-    - Optional AI Model/API
-    - Authentication and Role Checks
-    - Test Data and Evaluation Suite
-
-### Core Design Principle
-
-**AI proposes; deterministic logic verifies; humans authorize.**
-
-AI may interpret messages, summarize incidents, and help generate recovery ideas. It must not be the sole authority for determining resource availability, dependency relationships, deadline feasibility, or permission to execute an action.
-
-## 7. AI and Algorithm Strategy
-
-### Deterministic Components
-- Data validation and normalization.
-- Dependency graph traversal.
-- Deadline and resource checks.
-- Impact severity calculations.
-- Recovery-plan feasibility validation.
-- Approval and permission enforcement.
-- Activity logging.
-
-### AI-Assisted Components
-- Extracting structured incident information from text.
-- Summarizing affected commitments.
-- Generating explanations in plain language.
-- Suggesting candidate recovery actions.
-- Drafting supplier and customer messages.
-
-### AI Safety Rules
-- Validate extracted information against stored business records.
-- Mark missing or ambiguous information as unknown.
-- Never invent supplier availability, costs, or deadlines.
-- Reject or flag plans that fail deterministic validation.
-- Require human approval before consequential actions.
-- Keep AI-generated messages as drafts until approved.
-
-## 8. Suggested Technology Stack
-
-The team should agree on one stack before implementation.
-
-A practical option:
-
-- **Frontend:** React with TypeScript.
-- **Backend:** Python with FastAPI.
-- **Database:** PostgreSQL, or SQLite for a simpler local prototype.
-- **Data Validation:** Pydantic.
-- **Dependency Analysis:** Python graph structures or NetworkX.
-- **AI Integration:** A replaceable model/API adapter.
-- **Testing:** Pytest for backend logic; frontend component and workflow tests.
-- **Version Control:** Git and GitHub.
-- **Deployment:** One hosted frontend and backend, or a single demonstrable local environment.
-
-Avoid adding complex infrastructure unless it directly supports the MVP.
-
-## 9. Database Structure
-
-Suggested entities:
-
-### BusinessJob
-- id
-- name
-- description
-- deadline
-- status
-- priority
-
-### Supplier
-- id
-- name
-- contact_reference
-- reliability_notes
-
-### Resource
-- id
-- name
-- total_quantity
-- available_quantity
-- availability_period
-
-### Commitment
-- id
-- job_id
-- commitment_type
-- required_date
-- status
-
-### Dependency
-- id
-- source_type
-- source_id
-- target_type
-- target_id
-- dependency_type
-- required_quantity
-
-### Disruption
-- id
-- type
-- description
-- affected_entity
-- reported_at
-- severity
-- status
-
-### RecoveryPlan
-- id
-- disruption_id
-- plan_summary
-- feasibility_status
-- estimated_cost
-- assumptions
-- status
-
-### RecoveryAction
-- id
-- recovery_plan_id
-- action_type
-- target_entity
-- parameters
-- validation_status
-
-### Approval
-- id
-- recovery_plan_id
-- reviewer_id
-- decision
-- comments
-- decided_at
-
-### ActivityLog
-- id
-- disruption_id
-- actor_id
-- action_type
-- details
-- created_at
-
-Use foreign keys where appropriate. Store quantities, costs, and timestamps using appropriate data types. Exact fields can be adjusted during implementation.
-
-## 10. API Structure
-
-Suggested endpoints:
-
-### Business Data
-- GET /jobs
-- POST /jobs
-- GET /suppliers
-- GET /resources
-- GET /dependencies
-
-### Disruptions
-- POST /disruptions
-- GET /disruptions
-- GET /disruptions/{id}
-
-### Analysis and Recovery
-- POST /disruptions/{id}/analyze
-- GET /disruptions/{id}/impact
-- POST /disruptions/{id}/recovery-plans
-- GET /recovery-plans/{id}
-
-### Approval and Actions
-- POST /recovery-plans/{id}/approve
-- POST /recovery-plans/{id}/reject
-- POST /recovery-plans/{id}/revalidate
-- GET /disruptions/{id}/activity-log
-
-These are proposed contracts, not existing endpoints. The team must define request and response schemas before parallel development.
-
-## 11. Core Workflow
-
-1. User reports a disruption.
-2. System validates the input.
-3. System extracts structured facts if AI is needed.
-4. System retrieves relevant business records.
-5. Impact engine identifies affected commitments.
-6. Recovery engine generates candidate plans.
-7. Validation engine checks every plan.
-8. System ranks feasible plans and explains trade-offs.
-9. Owner reviews and approves, edits, or rejects a plan.
-10. Edited plans are revalidated.
-11. System prepares follow-up actions.
-12. System records the decision and displays the updated status.
-
-## 12. MVP Scope
-
-### Must Have
-- Synthetic business data.
-- One disruption scenario.
-- Dependency-based impact analysis.
-- At least two recovery options where the data permits.
-- Deterministic feasibility checks.
-- Human approval flow.
-- Activity log.
-- Working end-to-end interface.
-- Reproducible demo and accessible GitHub repository.
-
-### Not Required for the MVP
-- Real supplier integrations.
-- Sending real WhatsApp messages.
-- Real payments.
-- Autonomous contractual changes.
-- Full ERP, POS, or project-management functionality.
-- Learning a custom machine-learning model from historical incidents.
-- Support for every industry from day one.
-
-## 13. Evaluation and Testing
-
-Test the system with scenarios including:
-
-1. A disruption affecting one job.
-2. A shared resource affecting multiple jobs.
-3. An available alternative supplier.
-4. No feasible recovery plan.
-5. Missing supplier availability information.
-6. Conflicting deadlines or quantities.
-7. A user editing a proposed plan into an infeasible plan.
-8. An unauthorized user attempting approval.
-9. An AI extraction error.
-10. A repeated incident submission.
-
-Measure:
-- Impact identification accuracy.
-- Feasibility-validation accuracy.
-- Time needed to understand a disruption.
-- Time needed to reach a decision.
-- Percentage of recommendations with clear explanations.
-- Whether invalid or uncertain plans are correctly flagged.
-
-Use predefined synthetic test cases and report measured results honestly.
-
-## 14. Privacy and Responsible Use
-
-- Use synthetic data in the hackathon prototype.
-- Avoid exposing customer or supplier information to AI services unnecessarily.
-- Restrict actions according to user permissions.
-- Keep an audit trail of important decisions.
-- Apply appropriate data minimization, access control, retention, and consent practices in a real deployment.
-- Review applicable Malaysian PDPA obligations before handling real personal data.
-
-## 15. Business Value and Challenge Fit
-
-The system aims to reduce manual coordination and help SMEs make more informed decisions when operations are disrupted.
-
-Its value comes from tracing downstream impacts, comparing feasible recovery plans, and keeping decisions under human control.
-
-The prototype should demonstrate:
-- A clear recurring business problem.
-- A complete operational workflow.
-- Practical, explainable automation.
-- Human approval and auditability.
-- Potential reuse across different SMEs.
-- A realistic implementation and growth path.
-
-The primary SDG alignment is **SDG 8: Decent Work and Economic Growth**, through improved operational productivity and support for small businesses.
-
-## 16. Demo Plan
-
-1. Open the fictional business dashboard.
-2. Show several scheduled events and shared resources.
-3. Enter a supplier-delay incident.
-4. Display all affected commitments and explain the dependency chain.
-5. Compare feasible recovery options.
-6. Demonstrate an infeasible option being rejected.
-7. Approve one valid plan.
-8. Show prepared follow-up messages and tasks.
-9. Open the activity log to inspect the decision history.
-
-## 17. Definition of Done
-
-The MVP is ready when:
-- The full workflow can be demonstrated from start to finish.
-- Impact analysis matches the expected results of predefined test cases.
-- Recovery plans are validated against known constraints.
-- Missing or conflicting information is surfaced.
-- Approval and rejection work correctly.
-- Important decisions are recorded.
-- The demo can be reproduced from documented setup instructions.
-- The repository matches the demonstrated functionality.
-
-## 18. Running Locally
-
-Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/).
-
-Run these from `src/backend`:
-
-```bash
-uv sync
-uv run python -m app.db.seed
-uv run uvicorn app.main:app --reload --port 8000
+# SDC RECOVERY
+
+> When a supplier lets a small business down, see what breaks, compare fixes, and decide in minutes.
+
+---
+
+| Field | Details |
+|---|---|
+| **Team Name** | ARRAY FIVE |
+| **Team Domain** |  Domain 2  |
+| **SDG Track (1–17)** | SDG-8: Decent Work and Economic Growth |
+| **Team Leader** | Yosef Kristian Tirta |
+| **University** | Xiamen University Malaysia |
+| **Number of Members** | 5 |
+
+## Links
+
+| Resource | Link |
+|---|---|
+| GitHub Repository | https://github.com/YosefKT1604/ARRAY-FIVE |
+| Live Demo | https://array-five.replit.app |
+| RunPod Endpoint | https://api.runpod.ai/v2/your-endpoint-id |
+| Slide Deck | https://canva.link/yxdppt9l7r4bfl2 |
+| Demo Video | https://example.com/demo-video |
+---
+
+## Overview
+
+### Problem
+
+Small and medium businesses depend on a chain of suppliers, staff and resources to deliver what they've promised their customers. When one link breaks, such as a supplier delivering late or sending fewer items than ordered, one late delivery can put several customer commitments at risk at once.
+
+Large companies handle this with supply-chain software and planning teams. Most small business owners have neither. They hear about disruptions through WhatsApp messages and work out the impact by hand: which jobs need the missing items, whether spare stock exists, which other suppliers can deliver in time, and at what cost. Under time pressure this is easy to get wrong: a supplier that looks cheaper may arrive too late, or a "backup" supplier may not actually have stock.
+
+Generic AI chatbots can suggest ideas, but they can't check whether a plan is actually possible. Businesses need fast recovery options they can trust and stay in control of.
+
+### Reference Scenario
+
+A Kuala Lumpur event planner hears from a supplier, the day before two events, that only 20 of 40 chairs will arrive on time. Both events on that day, a wedding and a corporate seminar, are at risk (2 of 2, 100%), with a 28.6% chair shortfall (50 of 70 chairs available). Neither event can be moved, and the cheapest-looking option (supplier Delima, RM 56) arrives too late.
+
+### Solution
+
+1. **Understand the disruption.** The owner pastes a supplier message (such as an informal WhatsApp text) or fills in a short form. A generative AI model extracts the supplier, item, quantity and new delivery date into a structured format, and rule-based extraction checks them. Any disagreement or uncertain value goes back to the owner to confirm.
+2. **Find the impact.** An impact engine follows the business's dependencies (supplier → delivery → resource → job → customer commitment) and calculates which commitments are at risk and how many items are short on each day.
+3. **Generate recovery plans.** The system proposes options from real business records: alternative suppliers, spare stock, rescheduling where allowed, or asking the supplier to expedite. AI may suggest extra ideas.
+4. **Validate every plan.** A deterministic validator simulates each plan against stock, lead times, deadlines and double-booking, and labels it *feasible*, *infeasible* or *needs confirmation*. AI never decides feasibility, so hallucinated suppliers or stock are never recommended.
+5. **Rank and explain.** Feasible plans are ranked by commitments protected, cost and certainty. AI turns the results into clear explanations of the trade-offs.
+6. **Human approval.** The owner approves, edits (which triggers revalidation) or rejects a plan. The system then drafts supplier and customer messages (never auto-sent) and records every decision in an activity log.
+
+### Key Features
+
+- **Disruption intake** from a form or a pasted supplier message, with AI and rule-based readings compared
+- **Impact analysis** through a dependency graph, showing every affected job and the shortfall per day
+- **Checked recovery plans** labelled *feasible*, *infeasible* or *needs confirmation*, then ranked
+- **Owner-only approval** with role checks; edited plans are re-validated before they can be approved
+- **Draft messages and activity log** for every approved plan and decision
+- **Works without AI:** every AI feature has a rule-based or template fallback
+
+## SDG Impact
+
+| Metric | Details |
+|---|---|
+| **Primary target** | SDG 8.3: support productive activities, entrepreneurship and the growth of micro, small and medium-sized enterprises |
+| **Secondary target** | SDG 9.3: increase small enterprises' integration into value chains and markets |
+| **Baseline** | MSMEs make up 96.1% of business establishments in Malaysia, contribute 39.5% of GDP and employ 48.7% of the workforce (DOSM, 2024). 55% of Malaysian businesses report their supply chain has been impacted by geopolitical issues (UOB Business Outlook Study 2023). Most micro businesses have no planning tools. |
+| **KPI 1 — Commitment protection rate** | % of at-risk customer commitments covered by a validated (feasible) recovery plan |
+| **KPI 2 — Time to decide** | Minutes from receiving a supplier message to an approved, validated plan |
+| **KPI 3 — Safety rate** | % of plans shown as "feasible" that are actually infeasible (must stay at 0%) |
+
+**Phase 2 targets** (on at least 30 synthetic disruption scenarios, plus a pilot with 3–5 Malaysian micro/small businesses if available):
+
+- ≥ 80% of at-risk commitments protected by a validated plan, wherever a feasible option exists
+- ≥ 50% reduction in time to decision compared with solving the scenario by hand
+- 0% infeasible plans shown as feasible
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript, React Router, TanStack Query, Tailwind CSS 4, Vite 8 |
+| Backend | Python 3.12, FastAPI, Uvicorn, Pydantic 2, SQLAlchemy 2 |
+| Database | SQLite (seeded with synthetic demo data) |
+| AI | Google Gemini API (Gemini 3.1 Flash-Lite, free tier) through a replaceable LiteLLM adapter, with rule-based fallbacks |
+| AI / Compute | RunPod — TODO: describe what runs on RunPod |
+| Hosting | Replit Deployments (one service serves the API and the React frontend); Replit Secrets for the API key |
+| Testing | pytest (backend), Vitest, Playwright and Mock Service Worker (frontend) |
+| CI / Version control | GitHub and GitHub Actions (tests run on every change) |
+
+## Architecture
+
+```
+User (browser)
+   │
+   ▼
+React frontend ──HTTPS / REST──► FastAPI backend (on Replit)
+                                    │  validates input, checks permissions
+                                    │
+                                    ├──► AI module (optional): read supplier message,
+                                    │       explain plans, polish drafts
+                                    │       (Gemini 3.1 Flash-Lite via LiteLLM, rule-based fallback)
+                                    ├──► Impact engine: supplier → delivery → resource → job → commitment
+                                    ├──► Recovery planner: generate → validate → rank
+                                    ├──► Owner approval → draft supplier and customer messages
+                                    └──► SQLite: business data, plans, activity log
 ```
 
-The API is then at `http://localhost:8000/api/v1`, and the interactive docs are at http://localhost:8000/docs`.
+The AI is called only through an adapter. It never writes to the database or decides feasibility, and the system falls back to rules if the AI is unavailable.
 
-The server creates and seeds the database on first start. Running the seed command again resets it to the demo data.
+## Project Structure
 
-### Backend without uv (Windows PowerShell)
-
-From the repository root, once:
-
-```powershell
-py -3.12 -m venv src\backend\.venv
-.\src\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest
+```
+.
+├── docs/                    # AI integration, evaluation, contracts and recovery docs
+├── fixtures/
+│   ├── ai/                  # AI evaluation sets (extraction, explanation, draft cases)
+│   └── demo/                # Synthetic demo business data and expected results
+├── frontend/                # React + TypeScript app (see frontend/README.md)
+├── scripts/
+│   ├── build.sh             # Replit build: backend deps + frontend bundle
+│   └── start.sh             # Replit run: one server on port 8000
+├── src/backend/
+│   ├── app/                 # FastAPI app: routers, services, models, schemas, database
+│   ├── contracts/           # Shared data contracts between modules
+│   ├── impact_engine/       # Dependency graph and impact analysis
+│   └── scdc/
+│       ├── ai/              # AI extraction, explanations, message drafts, evaluation
+│       └── recovery/        # Recovery plan generation, validation, costing and ranking
+├── submission/              # Required submission documents
+│   ├── SDC2026_ARRAY FIVE_Preliminary.pdf
+│   ├── SDC2026_ARRAY FIVE_TechDeclaration.pdf
+│   ├── SDC2026_ARRAY FIVE_Replit_POU.pdf
+│   └── SDC2026_ARRAY FIVE_Runpod_POU.pdf
+├── tests/                   # Backend, impact engine, recovery and AI tests
+├── .replit                  # Replit run and deployment configuration
+├── LICENSE
+├── requirements.txt         # Python dependencies (for setups without uv)
+├── SCDC_PLAN.md             # Full algorithm and team implementation plan
+└── README.md
 ```
 
-Then start the server from `src\backend`:
+## How to Run
+
+### Option 1 — Run on Replit (Recommended)
+
+1. Open the Replit project, or import this repository via **Create Repl → Import from GitHub**.
+2. Open the **Secrets** tab (🔒) and add the AI settings listed in `src/backend/.env.example`: `SCDC_AI_PROVIDER`, `SCDC_AI_MODEL`, `SCDC_AI_API_KEY` (and optionally `SCDC_AI_API_BASE`). Without them, every AI feature uses its rule-based fallback.
+3. Run `bash scripts/build.sh` once, then click **Run** (`scripts/start.sh` starts the app on port 8000).
+4. Click **Publish** to deploy; `.replit` runs the same build and start scripts.
+
+### Option 2 — Run Locally (Windows PowerShell)
+
+Requires Python 3.12+, [uv](https://docs.astral.sh/uv/) and Node 20+.
 
 ```powershell
+# 1. Clone the repository
+git clone https://github.com/YosefKT1604/ARRAY-FIVE.git
+cd ARRAY-FIVE
+
+# 2. Backend (terminal 1)
 cd src\backend
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
-```
+python -m uv sync
+$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"   # demo date
+python -m uv run uvicorn app.main:app --reload --port 8000
 
-### Demo date and AI settings
-
-The demo story happens on Tuesday 20 Oct 2026. To make the backend agree with the frontend's demo date (how
-"tomorrow" and "Friday" in a message are read, and the date impact scores are measured from), set this before
-starting the server, or put it in `src/backend/.env` (copy `src/backend/.env.example`):
-
-```powershell
-$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"
-```
-
-Without an AI model (the default) every AI feature uses its rule-based or template fallback. To connect a model,
-see `docs/AI_INTEGRATION.md` section 6.
-
-### Frontend
-
-Requires Node 20+. In a second terminal:
-
-```powershell
+# 3. Frontend (terminal 2, from the repository root)
 cd frontend
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The default `hybrid` mode uses the real backend and mocks only what is not built yet;
-`mock` mode needs no backend. See `frontend/README.md` for the modes and the demo script.
+Open http://localhost:5173. The API docs are at http://localhost:8000/docs.
 
-### Tests
+To reset the demo data, from `src\backend`: `python -m uv run python -m app.db.seed`
 
-From the repository root:
+No uv? From the repository root, once:
 
 ```powershell
-.\src\backend\.venv\Scripts\python.exe -m pytest -q    # backend, impact engine and AI module; no network, no key
+py -3.12 -m venv src\backend\.venv
+.\src\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt pytest
+cd src\backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
-From `frontend`: `npm run typecheck; npm run lint; npm test; npm run build`.
+Frontend modes (`hybrid`, `mock`, `real`) and the demo script are in [frontend/README.md](frontend/README.md).
 
-### Deploy on Replit
+### Run Tests
 
-One service serves both the React app and the API (FastAPI serves `frontend/dist`).
+```powershell
+# Backend, impact engine, recovery and AI (no network or API key needed)
+cd src\backend
+python -m uv run pytest -q
 
-1. In Replit, choose **Import from GitHub** and pick this repository (branch `prelim-fixes` or `main`).
-2. Open **Secrets** and set the AI settings, names only here: `SCDC_AI_PROVIDER`, `SCDC_AI_MODEL`, `SCDC_AI_API_KEY`, and optionally `SCDC_AI_API_BASE`, `SCDC_AI_TIMEOUT_S`, `SCDC_AI_MAX_TOKENS`. Without them every AI feature uses its rule-based fallback. Never put values in the repository.
-3. Run `bash scripts/build.sh` once (installs the backend and builds the frontend), then press **Run** (`scripts/start.sh`, port 8000).
-4. Click **Publish** to deploy; the `[deployment]` section of `.replit` runs the same build and start scripts.
+# Frontend
+cd frontend
+npm run typecheck; npm run lint; npm test
+```
 
-The demo date (`SCDC_DEMO_NOW`) is set in `.replit` and `scripts/start.sh`. The SQLite database is recreated and seeded on start, so a restart resets the demo; that is acceptable.
+## Testing & Evaluation
+
+- **532 backend tests** and **42 recovery-planning tests**, covering failure cases such as late suppliers, insufficient stock, unknown suppliers, edited plans becoming invalid and AI failure. They run on every change through GitHub Actions.
+- **AI evaluation on 62 synthetic cases**: 24 supplier-message extractions, 20 explanations and 18 draft messages, with zero unsafe outputs shown.
+- **Demo results** are checked against agreed expected outputs (`fixtures/demo/`: `incident.json`, `expected_impact.json`, `expected_plans.json`).
+
+## How We Use Replit (Required)
+
+Replit is an official SDC sponsor resource.
+
+- **Hosting:** the live prototype runs on Replit Deployments (`.replit` → `scripts/build.sh` and `scripts/start.sh`) at https://array-five.replit.app. One deployment runs the FastAPI backend and serves the React website.
+- **Secrets:** the Gemini API key and AI settings are stored in Replit Secrets, never in the code or repository.
+- **Not locked in:** the app is standard Python (FastAPI) and React, so it also runs locally or on any other host without changes.
+
+📄 Proof of use: `submission/SDC2026_ARRAY FIVE_Replit_POU.pdf`
+
+
+## Data, Privacy & Responsible AI
+
+- **No real personal data.** The prototype uses only synthetic demo data for a fictional business (invented supplier, customer and staff names, simulated messages). Login is simulated with demo accounts.
+- **What goes to the AI:** only the supplier message text and validated analysis results are sent to Gemini; no contact details, passwords or payment information.
+- **Hallucination:** AI output must match a strict schema and is checked against business records; invented suppliers, quantities or dates are rejected.
+- **Ambiguous messages** (e.g. "Friday", "kerusi"): AI and rule-based readings are compared, and disagreements are flagged for the owner to confirm.
+- **Single provider and rate limits:** the LiteLLM adapter lets another model be swapped in by configuration, and the rule-based fallback keeps the whole workflow running without AI.
+- **Unknown facts** (e.g. rental return terms) are marked *needs confirmation*, never *feasible*.
+- **Over-trust:** AI text is labelled, AI never edits records, and only the owner role can approve a plan.
+
+## Team & Modules
+
+The system was split into five modules built in parallel against shared data contracts (`docs/CONTRACTS.md`), each on its own branch and merged through pull requests.
+
+| Module | Area | Owner | GitHub |
+|---|---|---|---|
+| P1 | Frontend: React screens connected to the backend API | Yosef Kristian Tirta | YosefKT1604 |
+| P2 | Backend: FastAPI routes, database models, permission checks, activity log | Nicholas Dillon | DillonNicholas |
+| P3 | Impact analysis: dependency-graph impact engine | Joshua M. N. Tjoa | Ojojo37 |
+| P4 | Recovery planning: plan generator, deterministic validator, ranking | Raymond Russel Willim | raymondwillim|
+| P5 | AI module: Gemini adapter, message extraction, explanations, drafts, evaluation sets | Erwin Okto Wu | ErwinOW |
+
+Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.com/YosefKT1604)), [@DillonNicholas](https://github.com/DillonNicholas), [@ErwinOW](https://github.com/ErwinOW), [@Ojojo37](https://github.com/Ojojo37), [@raymondwillim](https://github.com/raymondwillim).
+
+**Mentoring:** Alpha Red (SDC sponsor) reviewed our system architecture and validation approach.
+
+**AI-assisted development:** Claude Code (Anthropic) was used across all five modules, and OpenAI Codex for learning backend concepts and Python syntax. Each member reviewed the AI-assisted code for their module, and it was verified with the automated tests above.
+
+## Challenges & Learnings
+
+- **Keeping AI honest:** language models can invent stock or dates. We compared a pure-chatbot design with a hybrid one, and chose AI only for reading messages and explaining results, with deterministic rules as the only judge of feasibility.
+- **Five people, one system:** agreeing on shared data contracts first let all five members build their modules in parallel with mock data and connect them later.
+- **Demo reliability:** every AI feature has a rule-based fallback and the frontend has a mock mode, so the demo works even without a model or network.
+
+## Future Improvements
+
+- [ ] Pilot with 3–5 real Malaysian micro/small businesses to refine the interface and rules
+- [ ] Real WhatsApp and supplier integrations (sending approved messages, reading replies)
+- [ ] Templates for more industries beyond event planning (catering, retail, workshops)
+- [ ] Richer planning model (e.g. rental return terms)
+- [ ] Multi-business accounts with real login and PDPA-compliant data handling
+
+## Submission Checklist
+
+- [x] Team name, domain and SDG track filled in
+- [x] Slide deck link added
+- [ ] Demo video link added
+- [x] Replit used, with proof of use in `submission/`
+- [ ] RunPod used, with proof of use in `submission/`
+- [x] Preliminary proposal completed (`SDC2026_ARRAY FIVE_Preliminary.pdf`)
+- [x] Technical & Tools Declaration completed (`SDC2026_ARRAY FIVE_TechDeclaration.pdf`)
+- [x] Submission files named with the team name
+- [ ] "How to Run" steps verified
+- [x] No API keys or secrets committed to the repository
+
+## License
+
+This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE).
