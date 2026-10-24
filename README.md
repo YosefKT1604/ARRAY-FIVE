@@ -1,3 +1,15 @@
+<!-- PRODUCT NAME: decided at team call -->
+
+## Quick start
+
+1. Install Python 3.13, [uv](https://docs.astral.sh/uv/) and Node 20+.
+2. Backend, from `src\backend`: `python -m uv sync`
+3. Start it: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`
+4. Demo date: `$env:SCDC_DEMO_NOW = "2026-10-20T08:00:00+08:00"` (before step 3).
+5. Frontend, from `frontend`: `npm install; npm run dev`, then open http://localhost:5173.
+6. Reset the demo data, from `src\backend`: `python -m uv run python -m app.db.seed`
+7. Full run steps: [section 18](#18-running-locally). Frontend modes and demo script: [frontend/README.md](frontend/README.md).
+
 # Project README
 
 ## 1. Project Overview
@@ -485,3 +497,14 @@ From the repository root:
 ```
 
 From `frontend`: `npm run typecheck; npm run lint; npm test; npm run build`.
+
+### Deploy on Replit
+
+One service serves both the React app and the API (FastAPI serves `frontend/dist`).
+
+1. In Replit, choose **Import from GitHub** and pick this repository (branch `prelim-fixes` or `main`).
+2. Open **Secrets** and set the AI settings, names only here: `SCDC_AI_PROVIDER`, `SCDC_AI_MODEL`, `SCDC_AI_API_KEY`, and optionally `SCDC_AI_API_BASE`, `SCDC_AI_TIMEOUT_S`, `SCDC_AI_MAX_TOKENS`. Without them every AI feature uses its rule-based fallback. Never put values in the repository.
+3. Run `bash scripts/build.sh` once (installs the backend and builds the frontend), then press **Run** (`scripts/start.sh`, port 8000).
+4. Click **Publish** to deploy; the `[deployment]` section of `.replit` runs the same build and start scripts.
+
+The demo date (`SCDC_DEMO_NOW`) is set in `.replit` and `scripts/start.sh`. The SQLite database is recreated and seeded on start, so a restart resets the demo; that is acceptable.

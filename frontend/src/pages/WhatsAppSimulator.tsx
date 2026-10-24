@@ -225,6 +225,11 @@ export function WhatsAppSimulator() {
                       </p>
                     ) : (
                       <>
+                        {m.not_filed_reasons?.map((reason) => (
+                          <p key={reason} className="mt-1 text-sm font-medium text-bad">
+                            Not filed: {reason}
+                          </p>
+                        ))}
                         <p className="mt-1 text-sm font-medium text-warn">
                           {m.extraction.needs_clarification
                             ? "Some details are missing. You'll fill them in."

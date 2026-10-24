@@ -7,7 +7,9 @@ from app.schemas.disruption import DisruptionCreate
 from app.schemas.whatsapp import IncomingMessageCreate, IncomingMessageOut
 from app.services.activity_log import log_activity
 from app.services.ai import report_time
-from app.services.disruption import MATERIAL_FIELDS, analyze_disruption, create_disruption, find_open_duplicate
+from app.services.disruption import (
+    MATERIAL_FIELDS, analyze_disruption, create_disruption, find_open_duplicate, validate_report,
+)
 from app.services.snapshot import build_snapshot
 from contracts.enums import ActivityType
 from scdc.ai.adapter import ModelAdapter
@@ -38,6 +40,7 @@ def to_contract(record: IncomingMessageRecord) -> IncomingMessageOut:
                               from_contact=record.from_contact,
                               extraction=ExtractionResult.model_validate(record.extraction),
                               disruption_id=record.disruption_id, report_outcome=record.report_outcome,
+                              not_filed_reasons=record.not_filed_reasons or [],
                               reply=ACKNOWLEDGEMENT)
 
 # The report a complete reading stands for, or None if anything is missing or flagged: then the owner checks it.
@@ -58,6 +61,13 @@ def report_from(extraction: ExtractionResult, text: str) -> DisruptionCreate | N
 # File the report like the form would (P2's create_disruption, then the impact check), or link the message to
 # the open disruption that already covers the same delivery and new date. The log says no person filed it.
 def file_report(db: Session, record: IncomingMessageRecord, report: DisruptionCreate) -> None:
+    # A reading that cannot be true (unknown order, more than the delivery holds...) is not filed. It waits for the
+    # owner like an incomplete one, with the reasons kept for the inbox.
+    problems = validate_report(db, report)
+    if problems:
+        record.not_filed_reasons = [message for _, message in problems]
+        db.commit()
+        return
     details = {"message_id": record.id, "channel": record.channel, "filed_automatically": True}
     duplicate = find_open_duplicate(db, report)
     if duplicate is not None:

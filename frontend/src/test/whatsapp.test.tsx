@@ -64,6 +64,13 @@ describe('WhatsApp simulator page', () => {
     expect(within(inbox).getByText(/We read:/).parentElement).toHaveTextContent('Maju Rental Supplies · 20 Folding Chairs · new date Fri 23 Oct')
   })
 
+  it('says why a reading was not filed', async () => {
+    mockReceive({ text: incident.supplier_message.text })
+    state.inbox[0].not_filed_reasons = ['500 chairs is more than the 40 on this delivery.']
+    renderPage()
+    expect(await screen.findByText('Not filed: 500 chairs is more than the 40 on this delivery.')).toBeInTheDocument()
+  })
+
   it('offers an unknown sender with a number and saved name', async () => {
     const user = userEvent.setup()
     renderPage()

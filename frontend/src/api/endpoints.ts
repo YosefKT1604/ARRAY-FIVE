@@ -19,6 +19,7 @@ import type {
   Job,
   PendingDecision,
   PlanEditRequest,
+  PlanList,
   RecoveryPlan,
   Resource,
   Supplier,
@@ -39,8 +40,8 @@ export const getDisruption = (id: string) => request<Disruption>('GET', `/disrup
 export const createDisruption = (body: DisruptionCreate) => request<DisruptionCreated>('POST', '/disruptions', body)
 export const analyzeDisruption = (id: string) => request<ImpactResult>('POST', `/disruptions/${id}/analyze`)
 export const getImpact = (id: string) => request<ImpactResult>('GET', `/disruptions/${id}/impact`)
-export const generatePlans = (id: string) => request<Items<RecoveryPlan>>('POST', `/disruptions/${id}/recovery-plans`)
-export const listPlans = (id: string) => request<Items<RecoveryPlan>>('GET', `/disruptions/${id}/recovery-plans`)
+export const generatePlans = (id: string) => request<PlanList>('POST', `/disruptions/${id}/recovery-plans`)
+export const listPlans = (id: string) => request<PlanList>('GET', `/disruptions/${id}/recovery-plans`)
 export const getPlan = (id: string) => request<RecoveryPlan>('GET', `/recovery-plans/${id}`)
 export const approvePlan = (id: string, body: DecisionRequest) =>
   request<Approval>('POST', `/recovery-plans/${id}/approve`, body)

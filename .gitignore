@@ -11,3 +11,11 @@ wheels/
 *.db
 .idea/
 .env
+
+# Node, test output, screenshots
+node_modules/
+frontend/dist/
+test-results/
+playwright-report/
+frontend/screenshots/
+.venv/

@@ -1,13 +1,13 @@
 # CLAUDE.md — Frontend (Person 1)
 
-Put this file in `scdc/frontend/CLAUDE.md`. Claude Code reads it automatically at the start of every session, so these rules survive context resets and new chats.
+Claude Code reads this file automatically at the start of every session in `frontend/`. The root `CLAUDE.md` also applies.
 
 ## Project in one line
 SCDC: an AI-assisted disruption-recovery tool for Malaysian small businesses. Core principle: **AI proposes; deterministic logic verifies; humans authorize.**
-I own `frontend/` only. Do not edit `backend/`, `docs/`, or `fixtures/` without asking.
+I own `frontend/` only. Do not edit `src/backend/`, `docs/`, or `fixtures/` without asking.
 
 ## Source of truth (read before coding)
-- **The real backend (Person 2)** on branch `backend`, checked out at `../../ARRAY-FIVE-backend` and run locally at `http://localhost:8000`. Its OpenAPI schema (`http://localhost:8000/openapi.json`) is what the frontend actually talks to. **Generate TS types from it** with `openapi-typescript` into `src/types/api.generated.ts`. Never hand-edit that file; regenerate it with `npm run gen:api`.
+- **The real backend (Person 2)** in this repo at `../src/backend`, run locally at `http://localhost:8000` (from `src\backend`: `python -m uv run uvicorn app.main:app --reload --reload-dir app --port 8000`). Its OpenAPI schema (`http://localhost:8000/openapi.json`) is what the frontend actually talks to. **Generate TS types from it** with `openapi-typescript` into `src/types/api.generated.ts`. Never hand-edit that file; regenerate it with `npm run gen:api`.
 - `../docs/CONTRACTS.md` — the agreed intent: enums, error format (§8), the demo scenario (§9), and endpoints P2 hasn't built yet.
 - `../fixtures/demo/*.json` — the demo scenario. Mock responses must be built from these files, not retyped by hand.
 - If the backend and CONTRACTS.md disagree, **don't silently pick one**. Record it in `frontend/INTEGRATION_GAPS.md` (endpoint, contract says, backend does, impact on UI) and ask me. Default: follow the real backend for what exists, and the contract for what's missing.
@@ -52,7 +52,7 @@ frontend/src/
 ```
 
 ## Definition of done for any step
-`npm run typecheck && npm run lint && npm test && npm run build` all pass. If the backend is running, also click through the changed screen in `hybrid` mode against it. For UI changes, open the page (Playwright MCP or the webapp-testing skill), take a screenshot, and check it before saying the step is done.
+`npm run typecheck; npm run lint; npm test; npm run build` all pass (Windows PowerShell has no `&&`), and `npm run test:e2e` passes. If the backend is running, also click through the changed screen in `hybrid` mode against it. For UI changes, open the page (Playwright MCP or the webapp-testing skill), take a screenshot, and check it before saying the step is done.
 
 ## Working style
-Small commits on branch `p1-frontend`. After each step, report: what changed, how to test it, and what's still incomplete. Explain things simply: I'm learning (my background is marine biotechnology, not software).
+Small commits on the current feature branch. After each step, report: what changed, how to test it, and what's still incomplete. Explain things simply: I'm learning (my background is marine biotechnology, not software).

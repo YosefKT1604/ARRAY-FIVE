@@ -24,6 +24,11 @@ def demo_day(monkeypatch):
     app.dependency_overrides.pop(ai_service.get_ai_adapter, None)
 
 
+def skip_report_checks(monkeypatch):
+    """Let an impossible report through creation, to reach the impact engine's own handling of such data."""
+    monkeypatch.setattr("app.routers.disruption.validate_report", lambda db, data: [])
+
+
 def report_and_analyze(client, **changes):
     """Report the demo incident (optionally changed) and analyze it; return the analyze response."""
     client.post(f"{API}/disruptions", json={**FORM, **changes})
@@ -53,8 +58,9 @@ def test_demo_clock_sets_report_time_and_scores(seeded_client):
         "J-01": 6, "J-02": 6}
 
 
-def test_failed_analysis_is_an_error_and_changes_nothing(seeded_client):
+def test_failed_analysis_is_an_error_and_changes_nothing(seeded_client, monkeypatch):
     """An incident about a delivery that doesn't exist cannot be analyzed: 422, still `received`, no impact."""
+    skip_report_checks(monkeypatch)  # report creation refuses an unknown delivery; this tests the engine itself
     response = report_and_analyze(seeded_client, delivery_id="DL-99")
     assert response.status_code == 422
     assert response.json()["code"] == "VALIDATION_ERROR"
@@ -63,8 +69,9 @@ def test_failed_analysis_is_an_error_and_changes_nothing(seeded_client):
     assert seeded_client.get(f"{API}/disruptions/D-001/impact").status_code == 404
 
 
-def test_unknown_severity_is_stored_as_null(seeded_client):
+def test_unknown_severity_is_stored_as_null(seeded_client, monkeypatch):
     """A delay larger than the delivery leaves the jobs unresolved: no severity, run marked partial."""
+    skip_report_checks(monkeypatch)  # report creation refuses more than the delivery holds; this tests the engine itself
     response = report_and_analyze(seeded_client, quantity_affected=50)
     assert response.status_code == 200
     impact = response.json()

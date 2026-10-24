@@ -33,6 +33,7 @@ class DisruptionOut(BaseModel):
     status: DisruptionStatus
     incident: NormalizedIncident
     severity: int | None
+    plan_state: str | None = None
 
 
 class DisruptionCreated(BaseModel):

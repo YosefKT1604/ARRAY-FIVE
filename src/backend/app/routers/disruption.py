@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.dependencies import DbSession
@@ -10,6 +10,7 @@ from app.schemas.recovery_plan import RecoveryPlanList
 from app.services.activity_log import list_activity
 from app.services.disruption import (
     analyze_disruption, create_disruption, find_open_duplicate, get_disruption, list_disruptions,
+    validate_report,
 )
 from app.services.recovery_plan import create_recovery_plans, list_recovery_plans
 from contracts import DisruptionStatus, ImpactResult
@@ -24,6 +25,10 @@ def get_disruption_or_404(db: Session, disruption_id: str) -> Disruption:
 
 @router.post("", status_code=201, response_model=DisruptionCreated)
 def report_disruption(data: DisruptionCreate, db: DbSession) -> DisruptionCreated:
+    problems = validate_report(db, data)
+    if problems:
+        raise ApiError(status_code=422, code=ErrorCode.VALIDATION_ERROR, detail="Some details need fixing.",
+                       errors=[{"loc": ["body", field], "msg": message, "type": "value_error"} for field, message in problems])
     duplicate = find_open_duplicate(db, data)
     if duplicate is not None:
         raise ApiError(status_code=409, code=ErrorCode.DUPLICATE_DISRUPTION,
@@ -59,16 +64,20 @@ def get_impact(disruption_id: str, db: DbSession) -> ImpactResult:
     return ImpactResult.model_validate(disruption.impact)
 
 @router.post("/{disruption_id}/recovery-plans", status_code=201, response_model=RecoveryPlanList)
-def generate_recovery_plans(disruption_id: str, db: DbSession) -> RecoveryPlanList:
+def generate_recovery_plans(disruption_id: str, db: DbSession, response: Response) -> RecoveryPlanList:
     disruption = get_disruption_or_404(db, disruption_id)
     if disruption.status != DisruptionStatus.ANALYZED:
         raise ApiError(status_code=409, code=ErrorCode.INVALID_STATE_TRANSITION, detail=f"Plans need an analyzed disruption; {disruption_id} is {disruption.status}")
-    return RecoveryPlanList(items=create_recovery_plans(db, disruption))
+    plans, state = create_recovery_plans(db, disruption)
+    # Nothing was created when there is nothing to propose, so that is a plain 200 rather than a 201.
+    if not plans:
+        response.status_code = 200
+    return RecoveryPlanList(items=plans, state=state)
 
 @router.get("/{disruption_id}/recovery-plans", response_model=RecoveryPlanList)
 def get_recovery_plans(disruption_id: str, db: DbSession) -> RecoveryPlanList:
-    get_disruption_or_404(db, disruption_id)
-    return RecoveryPlanList(items=list_recovery_plans(db, disruption_id))
+    disruption = get_disruption_or_404(db, disruption_id)
+    return RecoveryPlanList(items=list_recovery_plans(db, disruption_id), state=disruption.plan_state)
 
 @router.get("/{disruption_id}/activity-log", response_model=ActivityLogList)
 def get_activity_log(disruption_id: str, db: DbSession) -> ActivityLogList:

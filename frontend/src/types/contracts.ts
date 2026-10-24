@@ -10,7 +10,8 @@ export type Supplier = S['SupplierWithOfferings']
 export type Resource = S['Resource']
 export type Delivery = S['Delivery']
 export type Dependency = S['Dependency']
-export type Disruption = S['DisruptionOut']
+/** plan_state is newer than the generated types (regenerating them now renames unrelated schemas), so it is added here. */
+export type Disruption = S['DisruptionOut'] & { plan_state?: PlanState | null }
 export type DisruptionCreate = S['DisruptionCreate']
 export type DisruptionCreated = S['DisruptionCreated']
 export type Incident = S['NormalizedIncident']
@@ -29,6 +30,12 @@ export type CheckCode = S['CheckCode']
 export type CheckResult = Check['result']
 export type DisruptionStatus = S['DisruptionStatus']
 export type PlanStatus = S['PlanStatus']
+/** Why a problem has no recovery plans (the plan list's optional `state`). */
+export type PlanState = 'no_recovery_needed' | 'planning_not_available' | 'impact_unclear'
+export interface PlanList {
+  items: RecoveryPlan[]
+  state?: PlanState | null
+}
 
 export type UserId = 'U-01' | 'U-02'
 export const USERS: { id: UserId; name: string; role: 'owner' | 'staff' }[] = [
@@ -74,6 +81,8 @@ export interface IncomingMessage {
    *  ("duplicate"). null = the message waits for the owner to check it. */
   disruption_id: string | null
   report_outcome: 'filed' | 'duplicate' | null
+  /** Plain-words reasons a reading that looked complete was NOT filed because it cannot be true. */
+  not_filed_reasons?: string[]
   /** The fixed acknowledgement the sender gets back; never AI text. */
   reply: string
 }

@@ -188,3 +188,19 @@ def test_setting_values(monkeypatch):
     for value, expected in [("", True), ("true", True), ("false", False), ("0", False), ("Off", False), ("no", False)]:
         monkeypatch.setenv("SCDC_WHATSAPP_AUTO_REPORT", value)
         assert auto_report_enabled() is expected, value
+
+
+def test_impossible_reading_is_not_filed_and_says_why(seeded_client, monkeypatch):
+    """A reading that cannot be true (more chairs than the delivery holds) waits for the owner, with the reason kept."""
+    real = whatsapp_service.report_from
+    monkeypatch.setattr(whatsapp_service, "report_from",
+                        lambda extraction, text: real(extraction, text).model_copy(update={"quantity_affected": 500}))
+    body = send(seeded_client, text=DEMO_MESSAGE, from_contact=MAJU).json()
+    assert (body["disruption_id"], body["report_outcome"]) == (None, None)
+    assert body["not_filed_reasons"] == ["500 chairs is more than the 40 on this delivery."]
+    assert seeded_client.get(f"{API}/disruptions").json()["items"] == []
+    assert seeded_client.get(f"{API}/whatsapp/inbox").json()["items"][0]["not_filed_reasons"] == body["not_filed_reasons"]
+
+
+def test_filed_message_has_no_reasons(seeded_client):
+    assert send(seeded_client, text=DEMO_MESSAGE, from_contact=MAJU).json()["not_filed_reasons"] == []

@@ -28,6 +28,8 @@ class IncomingMessageOut(BaseModel):
     # The disruption the message was filed as (or linked to); None = it waits for the owner to check it.
     disruption_id: str | None
     report_outcome: Literal["filed", "duplicate"] | None
+    # Why a reading that looked complete was not filed (e.g. "500 chairs is more than the 40 on this delivery.").
+    not_filed_reasons: list[str] = []
     # The fixed acknowledgement the sender gets back; it carries no AI output.
     reply: str
 

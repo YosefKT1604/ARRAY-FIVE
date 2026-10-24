@@ -349,8 +349,8 @@ Auth for the MVP: header `X-User-Id: U-01`. Backend looks up the role; no passwo
 | GET `/disruptions`, `/disruptions/{id}` | — | Disruption(s) | |
 | POST `/disruptions/{id}/analyze` | — | `ImpactResult` | 409 if status is `needs_clarification` |
 | GET `/disruptions/{id}/impact` | — | `ImpactResult` | |
-| POST `/disruptions/{id}/recovery-plans` | — | `{"items": [RecoveryPlan]}` (validated + ranked) | |
-| GET `/disruptions/{id}/recovery-plans` | — | `{"items": [RecoveryPlan]}` | |
+| POST `/disruptions/{id}/recovery-plans` | — | `{"items": [RecoveryPlan], "state": null}` (validated + ranked) | Optional `state` (also on GET and as `plan_state` on the disruption) says why `items` is empty: `no_recovery_needed`, `planning_not_available` (200). 409 `INVALID_STATE_TRANSITION` when the impact is not `complete` or has an `unresolved` entity (`impact_unclear`) |
+| GET `/disruptions/{id}/recovery-plans` | — | `{"items": [RecoveryPlan], "state": null}` | |
 | GET `/disruptions/{id}/explanation` | — | `Explanation` | Always 200; falls back to templates |
 | GET `/recovery-plans/{id}` | — | `RecoveryPlan` | |
 | PUT `/recovery-plans/{id}` | `{"base_version": 1, "actions": [...], "assumptions": [...]}` | `RecoveryPlan` (version+1, revalidated) | Edit = new version; old version `superseded` |
