@@ -5,7 +5,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { MoneyText } from '../components/MoneyText'
 import { StatusBadge } from '../components/StatusBadge'
 import { useNames } from '../lib/useNames'
-import { analyzeMockDisruption, createMockDisruption, fixtures, generateMockPlans, resetMockState } from '../mocks/db'
+import { analyzeMockDisruption, createMockDisruption, fixtures, generateMockPlans, resetMockState, state } from '../mocks/db'
 import { server } from '../mocks/server'
 import { PlanReview } from '../pages/PlanReview'
 import { updateSession } from '../state/session'
@@ -111,5 +111,45 @@ describe('plan review decisions', () => {
     expect(approveButton()).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Reject' })).toBeDisabled()
     expect(screen.getByTestId('blocked-reason')).toHaveTextContent('Only the business owner')
+  })
+
+  it('shows only the decision on an approved plan, even to Staff', async () => {
+    updateSession({ userId: 'U-02' })
+    const feasible = plans.find((p) => p.validation?.status === 'feasible')!
+    state.demoPlans[feasible.id] = { ...feasible, status: 'approved' }
+    wrap(<PlanReview />, `/plans/${feasible.id}`)
+    expect(await screen.findByTestId('approved-box')).toHaveTextContent('Approved')
+    expect(screen.queryByText("Waiting for the owner's decision")).not.toBeInTheDocument()
+    expect(screen.queryByText(/already approved/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+  })
+
+  it('shows the ORIGINAL actions under "Edited from the original plan"', async () => {
+    const feasible = plans.find((p) => p.validation?.status === 'feasible')!
+    const edited: RecoveryPlan = {
+      ...feasible,
+      version: 2,
+      created_by: 'user_edit',
+      actions: feasible.actions.map((a) => ({ ...a, parameters: { ...(a.parameters as object), quantity: 10 } })),
+    }
+    state.demoPlans[feasible.id] = edited
+    wrap(<PlanReview />, `/plans/${feasible.id}`)
+    const note = await screen.findByText(/Edited from the original plan:/)
+    await waitFor(() => expect(note).toHaveTextContent('20 ×'))
+    expect(note).not.toHaveTextContent('10 ×')
+  })
+})
+
+describe('plan and action IDs in text', () => {
+  function Sample({ plans }: { plans: RecoveryPlan[] }) {
+    const names = useNames(plans)
+    return <p>{names.humanize('RA-002 arrives on 2026-10-23. Review RP-001 and approve it.')}</p>
+  }
+  it('reads an action as "this order" and a plan by what it does', async () => {
+    const plans = fixtures.plans as RecoveryPlan[]
+    wrap(<Sample plans={[{ ...plans[0], actions: [{ ...plans[0].actions[0], id: 'RA-002' }] }]} />)
+    const text = (await screen.findByText(/this order/i)).textContent ?? ''
+    expect(text).toMatch(/^This order arrives on Fri 23 Oct\. Review the plan to rent 20 chairs from Cahaya Event Rentals for delivery on 21 Oct and approve it\.$/)
+    expect(text).not.toMatch(/RA-|RP-|2026-/)
   })
 })

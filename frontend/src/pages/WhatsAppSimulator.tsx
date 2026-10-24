@@ -10,7 +10,7 @@ import { cn } from '../lib/cn'
 import { formatDate, formatDateTime, formatTimeOfDay } from '../lib/format'
 import type { IncomingMessage, Resource, Supplier } from '../types/contracts'
 
-/** The "Send as" choice for a sender who is not a known supplier contact. */
+/** A sender who is not a saved supplier contact. Not offered in "Send as" for now; the backend still accepts it. */
 const UNKNOWN = ''
 
 /** Who sent a message, as the owner would recognise them. */
@@ -114,7 +114,6 @@ export function WhatsAppSimulator() {
                   {s.name}
                 </option>
               ))}
-              <option value={UNKNOWN}>Someone else (type a number)</option>
             </select>
           </label>
           {fromContact === UNKNOWN && (
@@ -218,9 +217,9 @@ export function WhatsAppSimulator() {
                     </p>
                     {m.disruption_id ? (
                       <p className="mt-2 text-sm font-medium text-ok">
-                        {m.report_outcome === 'duplicate' ? 'Already reported as ' : 'Reported automatically as '}
+                        {m.report_outcome === 'duplicate' ? 'Already reported. ' : 'Reported automatically. '}
                         <Link to={`/disruptions/${m.disruption_id}/impact`} className="font-semibold text-brand underline">
-                          {m.disruption_id}
+                          See the problem
                         </Link>
                       </p>
                     ) : (

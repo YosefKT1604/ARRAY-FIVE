@@ -17,7 +17,10 @@ import { ErrorPanel, LoadingState } from '../components/states'
 import { btnPrimary, btnSecondary, card, inputBase } from '../components/ui'
 import { API_MODE } from '../config'
 import { cn } from '../lib/cn'
-import type { DisruptionCreate, ExtractionResult } from '../types/contracts'
+import { formatDate } from '../lib/format'
+import { mentionsSeveralItems, plainQuestion, SEVERAL_ITEMS_TIP } from '../lib/questions'
+import { useNames } from '../lib/useNames'
+import type { Delivery, DisruptionCreate, ExtractionResult, Supplier } from '../types/contracts'
 
 interface FormState {
   supplier_id: string
@@ -49,6 +52,31 @@ const REQUIRED_MESSAGE: Partial<Record<keyof FormState, string>> = {
   new_arrival_date: 'Enter the new arrival date',
 }
 
+/** "2026-10-21" -> "Wed 21 Oct" in free text. */
+const plainDates = (text: string) => text.replace(/\b\d{4}-\d{2}-\d{2}\b/g, (d) => formatDate(d))
+
+/** The extraction's evidence note in plain words: the sender's saved contact, dates by weekday. */
+function plainEvidence(note: string): string {
+  if (/sender contact/i.test(note)) return "from the sender's saved contact"
+  return plainDates(note)
+}
+
+// How the backend words each field in its questions ("Please confirm the supplier: ...").
+const QUESTION_LABEL: Partial<Record<keyof FormState, string>> = {
+  supplier_id: 'the supplier',
+  resource_id: 'the affected item',
+  delivery_id: 'the delivery order',
+  quantity_affected: 'how many units are affected',
+  original_arrival_date: 'the original delivery date',
+  new_arrival_date: 'the new arrival date',
+}
+
+/** The supplier a WhatsApp message came from, by its contact reference. */
+function senderOf(list: Supplier[], m: { from_contact?: string | null }): Supplier | undefined {
+  const ref = m.from_contact?.trim().toLowerCase()
+  return ref ? list.find((x) => x.contact_reference?.trim().toLowerCase() === ref) : undefined
+}
+
 function prefill(result: ExtractionResult): FormState {
   const d = result.draft_incident
   return {
@@ -58,7 +86,7 @@ function prefill(result: ExtractionResult): FormState {
     quantity_affected: d.quantity_affected != null ? String(d.quantity_affected) : '',
     original_arrival_date: d.original_arrival_date ?? '',
     new_arrival_date: d.new_arrival_date ?? '',
-    description: d.description ?? '',
+    description: plainDates(d.description ?? ''),
   }
 }
 
@@ -71,7 +99,12 @@ export function ReportDisruption() {
   const deliveries = useQuery({ queryKey: ['deliveries'], queryFn: listDeliveries })
 
   const [message, setMessage] = useState('')
-  const [fromContact, setFromContact] = useState('')
+  const names = useNames()
+  // The supplier chosen under "Who sent it?" (a supplier ID; '' = not sure). null = not touched yet, so an
+  // opened WhatsApp message can preselect its sender.
+  const [senderChoice, setSenderChoice] = useState<string | null>(null)
+  // True while the sender came from the demo message, so it is dropped when the message is replaced.
+  const [demoContact, setDemoContact] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY)
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null)
   const [clientErrors, setClientErrors] = useState<Partial<Record<keyof FormState, string>>>({})
@@ -86,10 +119,15 @@ export function ReportDisruption() {
   if (inboxMessage && loadedMessageId !== inboxMessage.id) {
     setLoadedMessageId(inboxMessage.id)
     setMessage(inboxMessage.text)
-    setFromContact(inboxMessage.from_contact ?? inboxMessage.contact_name ?? inboxMessage.from_number ?? '')
     setExtraction(inboxMessage.extraction)
     setForm(prefill(inboxMessage.extraction))
   }
+
+  // The API gets the sender's contact reference; people see the supplier's name, never the reference.
+  const supplierList = suppliers.data?.items ?? []
+  const inboxSender = inboxMessage ? senderOf(supplierList, inboxMessage) : undefined
+  const senderId = senderChoice ?? inboxSender?.id ?? ''
+  const fromContact = supplierList.find((x) => x.id === senderId)?.contact_reference || undefined
 
   const extract = useMutation({
     mutationFn: (text: string) => extractDisruption(text, fromContact),
@@ -156,6 +194,15 @@ export function ReportDisruption() {
     if (Object.keys(errors).length === 0) submit.mutate()
   }
 
+  // The same wording as the box at the top: the question for this field, else its note as a sentence.
+  function hint(name: keyof FormState): string {
+    const label = QUESTION_LABEL[name]
+    const q = label && extraction?.clarification_questions.find((x) => x.startsWith(`Please confirm ${label}`))
+    if (q) return plainQuestion(q, names.humanize)
+    const note = (unresolved.get(name) ?? 'Not found in the message').trim().replace(/\.$/, '')
+    return `${note.charAt(0).toUpperCase()}${note.slice(1)}. Please fill this in.`
+  }
+
   function field(name: keyof FormState, label: string, input: (props: { id: string; className: string }) => ReactNode) {
     const flagged = unresolved.has(name) && !form[name]
     const error = clientErrors[name] ?? serverErrors[name]
@@ -175,10 +222,18 @@ export function ReportDisruption() {
             {error}
           </p>
         )}
-        {!error && flagged && <p className="mt-1 text-sm text-warn">{unresolved.get(name)} Please fill this in.</p>}
-        {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">How we got this: {evidence}</p>}
+        {!error && flagged && <p className="mt-1 text-sm text-warn">{hint(name)}</p>}
+        {!error && !flagged && evidence && <p className="mt-1 text-xs text-muted">How we got this: {plainEvidence(evidence)}</p>}
       </div>
     )
+  }
+
+  // "Maju's delivery: 40 chairs, due Wed 21 Oct"
+  function deliveryOption(d: Delivery): string {
+    const s = suppliers.data?.items.find((x) => x.id === d.supplier_id)
+    const unit = resources.data?.items.find((r) => r.id === d.resource_id)?.unit
+    const what = unit ? `${d.quantity} ${unit}${d.quantity === 1 ? '' : 's'}` : `${d.quantity} items`
+    return `${s ? `${s.aliases?.[0] ?? s.name}'s delivery` : 'Delivery'}: ${what}, due ${formatDate(d.expected_date)}`
   }
 
   const loadingLists = suppliers.isLoading || resources.isLoading || deliveries.isLoading
@@ -202,7 +257,7 @@ export function ReportDisruption() {
       )}
       {inboxMessage && (
         <p role="status" className="rounded-xl bg-info-bg p-3 text-sm">
-          Filled in from WhatsApp message {inboxMessage.id}.{' '}
+          Filled in from the supplier's WhatsApp message.{' '}
           <Link to="/whatsapp" className="font-semibold text-brand underline">
             Back to the inbox
           </Link>
@@ -215,19 +270,34 @@ export function ReportDisruption() {
         <textarea
           aria-label="Supplier message"
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => {
+            setMessage(e.target.value)
+            if (demoContact) {
+              setSenderChoice('')
+              setDemoContact(false)
+            }
+          }}
           rows={4}
           placeholder="e.g. Boss, our chair delivery for tomorrow will be late…"
           className={cn(inputBase, 'mt-3 border-line')}
         />
         <label className="mt-3 block text-sm">
           <span className="font-semibold">Who sent it? (optional)</span>
-          <input
-            value={fromContact}
-            onChange={(e) => setFromContact(e.target.value)}
-            placeholder="e.g. a WhatsApp number or contact name"
+          <select
+            value={senderId}
+            onChange={(e) => {
+              setSenderChoice(e.target.value)
+              setDemoContact(false)
+            }}
             className={cn(inputBase, 'mt-1 border-line')}
-          />
+          >
+            <option value="">Not sure</option>
+            {supplierList.map((x) => (
+              <option key={x.id} value={x.id}>
+                {x.name}
+              </option>
+            ))}
+          </select>
         </label>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
@@ -243,7 +313,10 @@ export function ReportDisruption() {
             className={btnSecondary}
             onClick={() => {
               setMessage(incidentFixture.supplier_message.text)
-              setFromContact(incidentFixture.supplier_message.from_contact)
+              setSenderChoice(
+                supplierList.find((x) => x.contact_reference === incidentFixture.supplier_message.from_contact)?.id ?? '',
+              )
+              setDemoContact(true)
             }}
           >
             Use the demo message
@@ -266,9 +339,10 @@ export function ReportDisruption() {
             {extraction.needs_clarification && (
               <div>
                 <p className="font-semibold text-warn">We couldn't find everything:</p>
+                {mentionsSeveralItems(extraction.unresolved_fields) && <p className="mt-1">{SEVERAL_ITEMS_TIP}</p>}
                 <ul className="list-disc pl-5">
                   {extraction.clarification_questions.map((q) => (
-                    <li key={q}>{q}</li>
+                    <li key={q}>{plainQuestion(q, names.humanize)}</li>
                   ))}
                 </ul>
               </div>
@@ -309,7 +383,7 @@ export function ReportDisruption() {
               .filter((d) => !form.supplier_id || d.supplier_id === form.supplier_id)
               .map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.id}: {d.quantity} {resources.data?.items.find((r) => r.id === d.resource_id)?.unit ?? 'units'}(s), due {d.expected_date}
+                  {deliveryOption(d)}
                 </option>
               ))}
           </select>

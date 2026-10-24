@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from scdc.ai.explanation_template import build_template, fmt_date, template_explanation
 from scdc.ai.schemas import ImpactStatus
 
@@ -12,11 +14,21 @@ def comparison(explanation, plan_id):
 
 
 def test_demo_summary_with_names(incident, impact, plans, snapshot):
-    """The summary names the supplier and items, lists affected records and the feasible plan."""
+    """With business names the summary is plain sentences: names, weekday dates, no IDs, no record counts."""
     text = template_explanation(incident, impact, plans, snapshot=snapshot).summary
-    assert text.startswith("Maju Rental Supplies (S-01) will deliver 20 folding chairs late")
-    assert "originally due 21 Oct, now expected 23 Oct" in text
-    assert "CM-02" in text and "not affected: J-03, CM-03" in text and "feasible: RP-001" in text
+    assert text == (
+        "20 folding chairs from Maju Rental Supplies will arrive 2 days late (Fri 23 Oct instead of Wed 21 Oct). "
+        "This hits the Aisyah & Daniel wedding reception and the Tekno Solutions product seminar on Thu 22 Oct: "
+        "short 20 chairs. Not affected: Birthday party, Taman Melawati (Sun 25 Oct). "
+        "Best option: rent 20 chairs from Cahaya Event Rentals for delivery on Wed 21 Oct (RM 80)."
+    )
+    assert not re.search(r"\b[A-Z]{1,3}-\d{2,4}\b|record\(s\)|plan\(s\)|\d{4}-\d{2}-\d{2}", text)
+
+
+def test_plain_summary_without_a_feasible_plan(incident, impact, plans, snapshot):
+    """No feasible plan: the summary says so and offers no best option."""
+    text = template_explanation(incident, impact, plans[1:], snapshot=snapshot).summary
+    assert "Best option" not in text and "None of the 2 options we checked is confirmed to work yet." in text
 
 
 def test_without_snapshot_ids_are_used(incident, impact, plans):

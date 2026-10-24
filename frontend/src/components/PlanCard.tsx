@@ -25,19 +25,22 @@ export function PlanCard({
   plan,
   comparison,
   recommended,
+  plans,
 }: {
   plan: RecoveryPlan
+  /** All the plans on the page, so other plans and their steps can be named instead of shown by ID. */
+  plans?: RecoveryPlan[]
   comparison?: PlanComparison
   recommended: boolean
 }) {
-  const names = useNames()
+  const names = useNames(plans)
   const status = plan.validation?.status
   const failing = failingChecks(plan)
   const questions = stillToConfirm(plan)
   // Anything already shown as a failing check or an open question is not repeated under "Watch out for".
   const shown = new Set([...failing.map((c) => c.detail), ...questions])
   const watchOut = (comparison?.limitations ?? []).filter((l) => !shown.has(l))
-  const benefits = safeBenefits(comparison?.benefits ?? [], plan, names.humanize)
+  const benefits = safeBenefits(comparison?.benefits ?? [], plan, names.humanize).map(names.humanize)
 
   return (
     <li

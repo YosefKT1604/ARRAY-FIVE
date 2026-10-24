@@ -5,7 +5,7 @@ import { EmptyState, ErrorPanel, LoadingState } from '../components/states'
 import { card } from '../components/ui'
 import { API_MODE } from '../config'
 import { actorName, describeActivity } from '../lib/activity'
-import { formatTimeOfDay, relativeTime } from '../lib/format'
+import { formatTimeOfDay } from '../lib/format'
 import { useNames } from '../lib/useNames'
 
 export function ActivityLog() {
@@ -55,9 +55,7 @@ export function ActivityLog() {
                   })}
                 </p>
                 <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-                  <span>
-                    {relativeTime(entry.created_at)} · {formatTimeOfDay(entry.created_at)}
-                  </span>
+                  <span>{formatTimeOfDay(entry.created_at)}</span>
                   {demoOnly && API_MODE !== 'mock' && (
                     <span className="rounded-full bg-warn-bg px-2 py-0.5 text-xs font-semibold text-warn">Demo only</span>
                   )}

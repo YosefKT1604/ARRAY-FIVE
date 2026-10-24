@@ -147,6 +147,36 @@ def test_edit_a_plan_makes_a_new_checked_version(seeded_client, demo_day):
     assert "plan_edited" in log
 
 
+def test_edited_title_follows_the_actions_and_never_stacks_suffixes(seeded_client, demo_day):
+    _, plans = plans_for(seeded_client)
+    plan = cahaya(plans)
+    url = f"/api/v1/recovery-plans/{plan['id']}"
+    assert plan["summary"] == "Rent 20 chairs from Cahaya Event Rentals for delivery on 21 Oct."
+
+    def with_quantity(current, quantity):
+        action = {**current["actions"][0], "parameters": {**current["actions"][0]["parameters"], "quantity": quantity}}
+        return {"base_version": current["version"], "actions": [action], "assumptions": current["assumptions"]}
+
+    v2 = seeded_client.put(url, json=with_quantity(plan, 10), headers=OWNER).json()
+    assert v2["summary"] == "Rent 10 chairs from Cahaya Event Rentals for delivery on 21 Oct."
+    v3 = seeded_client.put(url, json=with_quantity(v2, 1), headers=OWNER).json()
+    assert v3["version"] == 3 and v3["summary"] == "Rent 1 chair from Cahaya Event Rentals for delivery on 21 Oct."
+    assert "edited" not in v3["summary"]
+
+
+def test_any_version_of_an_edited_plan_can_be_read(seeded_client, demo_day):
+    _, plans = plans_for(seeded_client)
+    plan = cahaya(plans)
+    url = f"/api/v1/recovery-plans/{plan['id']}"
+    action = {**plan["actions"][0], "parameters": {**plan["actions"][0]["parameters"], "quantity": 10}}
+    seeded_client.put(url, json={"base_version": 1, "actions": [action], "assumptions": plan["assumptions"]}, headers=OWNER)
+
+    original = seeded_client.get(f"{url}/versions/1").json()
+    assert original["version"] == 1 and original["actions"][0]["parameters"]["quantity"] == 20
+    assert seeded_client.get(f"{url}/versions/2").json()["actions"][0]["parameters"]["quantity"] == 10
+    assert seeded_client.get(f"{url}/versions/9").status_code == 404
+
+
 def test_old_version_is_kept_as_superseded_and_newest_can_be_approved(seeded_client, session_factory, demo_day):
     from app.models.recovery_plan import RecoveryPlanVersionRecord
     _, plans = plans_for(seeded_client)

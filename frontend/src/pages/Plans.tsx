@@ -16,8 +16,7 @@ import type { PlanState } from '../types/contracts'
 export function Plans() {
   const { id = '' } = useParams()
   const queryClient = useQueryClient()
-  const names = useNames()
-
+  
   const disruption = useQuery({ queryKey: ['disruption', id], queryFn: () => getDisruption(id) })
   const plans = useQuery({ queryKey: ['plans', id], queryFn: () => listPlans(id) })
   // The explanation is a labelled mock until Person 5 ships it; failing to load it must not block the plans.
@@ -36,6 +35,8 @@ export function Plans() {
       void queryClient.invalidateQueries({ queryKey: ['disruption', id] })
     },
   })
+
+  const names = useNames(plans.data?.items)
 
   if (disruption.isLoading || plans.isLoading) return <LoadingState label="Loading options…" />
   if (disruption.error) return <ErrorPanel error={disruption.error} onRetry={() => void disruption.refetch()} />
@@ -108,6 +109,7 @@ export function Plans() {
             <PlanCard
               key={plan.id}
               plan={plan}
+              plans={plans.data!.items}
               comparison={compare(plan.id)}
               recommended={plan.rank === 1 && plan.validation?.status !== 'infeasible'}
             />
