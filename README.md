@@ -1,4 +1,4 @@
-# SDC RECOVERY
+# SCDC RECOVERY
 
 > When a supplier lets a small business down, see what breaks, compare fixes, and decide in minutes.
 
@@ -20,7 +20,7 @@
 | GitHub Repository | https://github.com/YosefKT1604/ARRAY-FIVE |
 | Live Demo | https://array-five.replit.app |
 | Slide Deck | https://canva.link/yxdppt9l7r4bfl2 |
-| Demo Video | https://example.com/demo-video |
+| Demo Video | https://youtu.be/Ok1MEf8au64|
 ---
 
 ## Overview
@@ -256,13 +256,13 @@ Team members: Yosef Kristian Tirta (Team Leader, [@YosefKT1604](https://github.c
 
 - [x] Team name, domain and SDG track filled in
 - [x] Slide deck link added
-- [ ] Demo video link added
+- [x] Demo video link added
 - [x] Replit used, with proof of use in `submission/`
 - [ ] RunPod used, with proof of use in `submission/`
 - [x] Preliminary proposal completed (`SDC2026_ARRAY FIVE_Preliminary.pdf`)
 - [x] Technical & Tools Declaration completed (`SDC2026_ARRAY FIVE_TechDeclaration.pdf`)
 - [x] Submission files named with the team name
-- [ ] "How to Run" steps verified
+- [x] "How to Run" steps verified
 - [x] No API keys or secrets committed to the repository
 
 ## License
